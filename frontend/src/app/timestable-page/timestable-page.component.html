@@ -1,0 +1,17 @@
+<main class="page">
+  @if (loadState() === 'loading') {
+    <p>Lädt...</p>
+  } @else if (loadState() === 'error') {
+    <p>{{ errorMessage() }}</p>
+    <button type="button" (click)="initChildId()">Erneut versuchen</button>
+  } @else if (childIdObfuscated()) {
+    <app-learning-menubar
+      [answersVisible]="answersVisible()"
+      (visibilityToggle)="toggleVisibility()"
+    />
+    <app-times-table
+      [childIdObfuscated]="childIdObfuscated()!"
+      [answersVisible]="answersVisible()"
+    />
+  }
+</main>

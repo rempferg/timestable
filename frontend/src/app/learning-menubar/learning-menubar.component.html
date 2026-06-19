@@ -1,0 +1,23 @@
+<div class="menubar">
+  <a
+    class="action-button home-button"
+    [routerLink]="['/']"
+    queryParamsHandling="preserve"
+    aria-label="Home"
+  >
+    <span class="action-icon material-icons" aria-hidden="true">home</span>
+    <span class="sr-only">Home</span>
+  </a>
+  <button
+    type="button"
+    class="action-button visibility-toggle"
+    (click)="onToggleVisibility()"
+    [attr.aria-pressed]="answersVisible"
+    [attr.aria-label]="answersVisible ? 'Sichtbar' : 'Ausgeblendet'"
+  >
+    <span class="action-icon material-icons" aria-hidden="true">
+      {{ answersVisible ? 'visibility' : 'visibility_off' }}
+    </span>
+    <span class="sr-only">{{ answersVisible ? 'Sichtbar' : 'Ausgeblendet' }}</span>
+  </button>
+</div>

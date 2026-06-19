@@ -1,0 +1,59 @@
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
+*.swp
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyd
+*.pyo
+*.egg-info/
+.dist-info/
+.eggs/
+*.egg
+.env
+.venv/
+venv/
+ENV/
+.envrc
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+coverage/
+htmlcov/
+
+# FastAPI / Uvicorn
+*.log
+
+# Node / Angular
+node_modules/
+**/node_modules/
+.angular/
+dist/
+out-tsc/
+.npm/
+.yarn/
+.pnpm-store/
+
+# Build artifacts
+*.tsbuildinfo
+
+# Database
+*.sqlite3
+*.db
+
+# Misc
+*.bak
+*.tmp
+*.temp
+
+# Server secrets
+server/timestable.env
+
+# Server secrets
+server/timestable.env

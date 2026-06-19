@@ -1,0 +1,95 @@
+:host {
+  display: block;
+  width: 100%;
+  height: 100%;
+
+  /* Enables container-relative font sizing (cqw/cqh). */
+  container-type: size;
+}
+
+.grid {
+  width: 100%;
+  height: 100%;
+  display: grid;
+  overflow: hidden;
+
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+    "Liberation Mono", "Courier New", monospace;
+
+  /* Scale font relative to container size and number of cells. */
+  font-size: clamp(
+    10px,
+    calc(min(100cqw, 100cqh) / var(--cells) * 0.45),
+    48px
+  );
+  line-height: 1;
+
+  --tt-border: color-mix(in srgb, #000 18%, transparent);
+  --tt-bg: color-mix(in srgb, #fff 92%, #000);
+  --tt-bg-header: color-mix(in srgb, #fff 86%, #000);
+  --tt-bg-hover: color-mix(in srgb, var(--tt-bg) 88%, #000);
+}
+
+.cell {
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  border-right: 1px solid var(--tt-border);
+  border-bottom: 1px solid var(--tt-border);
+  background: var(--tt-bg);
+
+  transition: background-color 120ms ease;
+}
+
+.header {
+  font-weight: 650;
+  background: var(--tt-bg-header);
+  cursor: pointer;
+  user-select: none;
+}
+
+.corner {
+  background: var(--tt-bg-header);
+  cursor: default;
+}
+
+.is-hovered {
+  background: var(--tt-bg-hover);
+}
+
+.value.is-hovered {
+  border-right-color: color-mix(in srgb, #000 45%, transparent);
+  border-bottom-color: color-mix(in srgb, #000 45%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, #000 40%, transparent);
+}
+
+.header.is-dimmed {
+  color: color-mix(in srgb, currentColor 25%, transparent);
+}
+
+.value.is-dimmed {
+  color: color-mix(in srgb, currentColor 25%, transparent);
+}
+
+.cell-value {
+  display: inline-block;
+}
+
+.cell-value.is-reveal {
+  animation: reveal-fade 1.5s ease-out forwards;
+}
+
+@keyframes reveal-fade {
+  0% {
+    opacity: 1;
+  }
+  70% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}

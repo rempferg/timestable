@@ -1,0 +1,63 @@
+<div
+  class="grid"
+  role="grid"
+  [style.gridTemplateColumns]="gridTemplate"
+  [style.gridTemplateRows]="gridTemplate"
+  [style.--cells]="cellCount"
+>
+  <div class="cell header corner" aria-hidden="true">+</div>
+
+  @for (col of factors; track col) {
+    <div
+      class="cell header col-header"
+      role="columnheader"
+      [class.is-hovered]="col === hoverCol"
+      [class.is-selected]="isSelectedFactor(col)"
+      [class.is-dimmed]="hasSelection() && !isSelectedFactor(col)"
+    >
+      @if (answersVisible()) {
+        {{ col }}
+      }
+    </div>
+  }
+
+  @for (row of factors; track row) {
+    <div
+      class="cell header row-header"
+      role="rowheader"
+      [class.is-hovered]="row === hoverRow"
+      [class.is-selected]="isSelectedFactor(row)"
+      [class.is-dimmed]="hasSelection() && !isSelectedFactor(row)"
+    >
+        @if (answersVisible()) {
+          {{ row }}
+        }
+    </div>
+
+    @for (col of factors; track col) {
+      <div
+        class="cell value"
+        role="gridcell"
+        (mouseenter)="setHover(row, col)"
+        (mouseleave)="clearHover()"
+        (click)="openQuestion(row, col)"
+        [class.is-hovered]="isHoveredCell(row, col)"
+        [class.is-dimmed]="isCellDimmed(row, col)"
+        [style.backgroundColor]="cellColor(row, col)"
+      >
+        <span class="cell-value">
+          {{ row + col }}
+        </span>
+      </div>
+    }
+  }
+</div>
+
+@if (selectedQuestionId !== null) {
+  <app-answer-dialog-plus-equations
+    [questionId]="selectedQuestionId"
+    [answersVisible]="answersVisible()"
+    (answer)="submitAnswer($event)"
+    (close)="closeQuestion()"
+  />
+}

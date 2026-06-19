@@ -1,0 +1,19 @@
+<div class="overview" role="img" aria-label="Division mit Rest Fortschritt">
+  <div class="cell header corner" aria-hidden="true">:</div>
+
+  @for (divisor of divisors; track divisor) {
+    <div class="cell header col-header" role="columnheader">{{ divisor }}</div>
+  }
+
+  @for (dividend of dividends; track dividend) {
+    <div class="cell header row-stub" aria-hidden="true"></div>
+
+    @for (divisor of divisors; track divisor) {
+      <div
+        class="cell value"
+        [class.is-invalid]="!isValidCell(dividend, divisor)"
+        [style.backgroundColor]="cellColor(dividend, divisor)"
+      ></div>
+    }
+  }
+</div>

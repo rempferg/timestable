@@ -1,0 +1,23 @@
+[Unit]
+Description=timestable FastAPI-Backend
+After=network.target
+Requires=postgresql.service
+
+[Service]
+Type=simple
+#User=fastapitest
+#Group=fastapitest
+#DynamicUser=true
+
+WorkingDirectory=/var/www/timestable/backend
+PrivateTmp=true
+EnvironmentFile=-/etc/systemd/system/timestable.env
+
+RuntimeDirectory=uvicorn-timestable
+ExecStart=python3 -m uvicorn fastapi_backend:app --uds /var/run/uvicorn-timestable/fastapi-timestable.sock --workers 4 --timeout-keep-alive 600
+ExecReload=/bin/kill -HUP ${MAINPID}
+RestartSec=1
+Restart=always
+
+[Install]
+WantedBy=multi-user.target

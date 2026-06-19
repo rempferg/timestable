@@ -1,0 +1,90 @@
+<section class="division-shell">
+  <header class="range-header">
+    <p class="range-title">Division mit Rest</p>
+    <p class="range-meta">
+      Bereich {{ rangeLabel }} · Gesehen {{ seenCountInRange }}/{{ questionCountInRange }} · Schwach {{ weakCountInRange }}
+    </p>
+  </header>
+
+  <div
+    class="grid-wrap"
+    (touchstart)="handleTouchStart($event)"
+    (touchend)="handleTouchEnd($event)"
+  >
+    <div
+      class="grid"
+      role="grid"
+      [style.gridTemplateColumns]="gridTemplate"
+      [style.gridTemplateRows]="rowTemplate"
+      [style.--cells]="cellCount"
+    >
+      <div class="cell header corner" aria-hidden="true">:</div>
+
+      @for (divisor of divisors; track divisor) {
+        <div
+          class="cell header col-header"
+          role="columnheader"
+          [class.is-hovered]="divisor === hoverCol"
+        >
+          {{ divisor }}
+        </div>
+      }
+
+      @for (dividend of visibleDividends(); track dividend) {
+        <div
+          class="cell header row-header"
+          role="rowheader"
+          [class.is-hovered]="dividend === hoverRow"
+        >
+          {{ dividend }}
+        </div>
+
+        @for (divisor of divisors; track divisor) {
+          <div
+            class="cell value"
+            role="gridcell"
+            (mouseenter)="isValidQuestion(dividend, divisor) && setHover(dividend, divisor)"
+            (mouseleave)="clearHover()"
+            (click)="openQuestion(dividend, divisor)"
+            [class.is-hovered]="isValidQuestion(dividend, divisor) && isHoveredCell(dividend, divisor)"
+            [class.is-disabled]="!isValidQuestion(dividend, divisor)"
+            [style.backgroundColor]="cellColor(dividend, divisor)"
+          >
+            @if (isValidQuestion(dividend, divisor) && (answersVisible() || isFlashCell(dividend, divisor))) {
+              <span class="cell-value" [class.is-reveal]="isFlashCell(dividend, divisor)">
+                {{ quotient(dividend, divisor) }} R {{ remainder(dividend, divisor) }}
+              </span>
+            }
+          </div>
+        }
+      }
+    </div>
+  </div>
+
+  <nav class="pager" aria-label="Bereichssteuerung">
+    <button type="button" class="pager-button" (click)="goPrev()" [disabled]="!canGoPrev()">Zurueck</button>
+
+    <label class="picker">
+      Bereich
+      <select
+        [value]="currentRangeStart()"
+        (change)="onRangeSelected(($any($event.target).value))"
+      >
+        @for (start of rangeStarts; track start) {
+          <option [value]="start">{{ formatRange(start) }}</option>
+        }
+      </select>
+    </label>
+
+    <button type="button" class="pager-button" (click)="goNext()" [disabled]="!canGoNext()">Weiter</button>
+  </nav>
+</section>
+
+@if (selectedQuestionId !== null) {
+  <app-answer-dialog-division-remainder
+    [questionId]="selectedQuestionId"
+    [answersVisible]="answersVisible()"
+    (answer)="submitAnswer($event)"
+    (close)="closeQuestion()"
+  />
+}

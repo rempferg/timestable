@@ -1,0 +1,52 @@
+<div class="answer-dialog-backdrop" (click)="close.emit()">
+  <div
+    class="answer-dialog"
+    role="dialog"
+    aria-modal="true"
+    (click)="handleDialogClick($event)"
+  >
+    <div class="stopwatch" aria-live="polite">
+      {{ elapsedLabel() }}
+    </div>
+    <button
+      class="close-button"
+      type="button"
+      (click)="$event.stopPropagation(); close.emit()"
+      aria-label="Close"
+    >
+      ×
+    </button>
+
+    <div class="question" (click)="revealResult()">
+      {{ factorA() }} + {{ factorB() }} =
+      <span class="result-slot" [class.is-hint]="answersVisible()" aria-hidden="!showResult()">
+        @if (showResult()) {
+          {{ result() }}
+        } @else {
+          <button
+            type="button"
+            class="reveal-box"
+            aria-label="Reveal result"
+          ></button>
+        }
+      </span>
+    </div>
+
+    <div class="actions">
+      <button
+        class="action-button ok"
+        type="button"
+        (click)="$event.stopPropagation(); handleAnswer(true)"
+      >
+        ok
+      </button>
+      <button
+        class="action-button not-ok"
+        type="button"
+        (click)="$event.stopPropagation(); handleAnswer(false)"
+      >
+        nicht ok
+      </button>
+    </div>
+  </div>
+</div>

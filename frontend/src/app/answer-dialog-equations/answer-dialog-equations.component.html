@@ -1,0 +1,79 @@
+<div class="answer-dialog-backdrop" (click)="close.emit()">
+  <div
+    class="answer-dialog"
+    role="dialog"
+    aria-modal="true"
+    (click)="handleDialogClick($event)"
+  >
+    <div class="stopwatch" aria-live="polite">
+      {{ elapsedLabel() }}
+    </div>
+    <button
+      class="close-button"
+      type="button"
+      (click)="$event.stopPropagation(); close.emit()"
+      aria-label="Close"
+    >
+      ×
+    </button>
+
+    <div class="question" (click)="revealResult()">
+      <span class="factor" [class.is-hint]="answersVisible() && missingSide() === 'left'">
+        <span class="result-slot" aria-hidden="!showMissing()">
+          @if (missingSide() === 'left') {
+            @if (showMissing()) {
+              {{ factorA() }}
+            } @else {
+              <button
+                type="button"
+                class="reveal-box"
+                aria-label="Reveal missing factor"
+              ></button>
+            }
+          } @else {
+            {{ factorA() }}
+          }
+        </span>
+      </span>
+      ·
+      <span class="factor" [class.is-hint]="answersVisible() && missingSide() === 'right'">
+        <span class="result-slot" aria-hidden="!showMissing()">
+          @if (missingSide() === 'right') {
+            @if (showMissing()) {
+              {{ factorB() }}
+            } @else {
+              <button
+                type="button"
+                class="reveal-box"
+                aria-label="Reveal missing factor"
+              ></button>
+            }
+          } @else {
+            {{ factorB() }}
+          }
+        </span>
+      </span>
+      =
+      <span class="factor">
+        <span class="result-slot">{{ result() }}</span>
+      </span>
+    </div>
+
+    <div class="actions">
+      <button
+        class="action-button ok"
+        type="button"
+        (click)="$event.stopPropagation(); handleAnswer(true)"
+      >
+        ok
+      </button>
+      <button
+        class="action-button not-ok"
+        type="button"
+        (click)="$event.stopPropagation(); handleAnswer(false)"
+      >
+        nicht ok
+      </button>
+    </div>
+  </div>
+</div>

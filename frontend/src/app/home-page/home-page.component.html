@@ -1,0 +1,126 @@
+<main class="home">
+  <div class="home-content">
+    <header class="home-header">
+      <p class="eyebrow">Modul wählen</p>
+      <h1>Übungsbereich</h1>
+      <p class="subtitle">Was lernen wir heute?</p>
+    </header>
+
+    @if (loadState() === 'error') {
+      <p class="status">{{ errorMessage() }}</p>
+      <button type="button" class="retry-button" (click)="ensureChildId()">Erneut versuchen</button>
+    } @else if (loadState() === 'loading') {
+      <p class="status">ID wird geladen…</p>
+    }
+
+    <section class="module-grid" aria-label="Lernmodule">
+      <a
+        class="module-card"
+        [class.is-disabled]="loadState() !== 'ready'"
+        [attr.aria-disabled]="loadState() !== 'ready'"
+        [routerLink]="['/timestable']"
+        [queryParams]="{ id: childIdObfuscated() }"
+        aria-label="1x1-Modul öffnen"
+      >
+        @if (childIdObfuscated()) {
+          <div class="module-preview" aria-hidden="true">
+            <app-times-table
+              [childIdObfuscated]="childIdObfuscated()!"
+              [answersVisible]="true"
+            />
+          </div>
+        }
+        <div class="module-meta">
+          <span class="module-title">Einmaleins</span>
+          <span class="module-description">Rechenaufgaben ohne Kästchen</span>
+        </div>
+      </a>
+      <a
+        class="module-card"
+        [class.is-disabled]="loadState() !== 'ready'"
+        [attr.aria-disabled]="loadState() !== 'ready'"
+        [routerLink]="['/timestable-equations']"
+        [queryParams]="{ id: childIdObfuscated() }"
+        aria-label="Einmaleins-Gleichungen öffnen"
+      >
+        @if (childIdObfuscated()) {
+          <div class="module-preview" aria-hidden="true">
+            <app-times-table-equations
+              [childIdObfuscated]="childIdObfuscated()!"
+              [answersVisible]="true"
+            />
+          </div>
+        }
+        <div class="module-meta">
+          <span class="module-title">Einmaleins</span>
+          <span class="module-description">Kästchenaufgaben</span>
+        </div>
+      </a>
+
+      <a
+        class="module-card"
+        [class.is-disabled]="loadState() !== 'ready'"
+        [attr.aria-disabled]="loadState() !== 'ready'"
+        [routerLink]="['/plustable']"
+        [queryParams]="{ id: childIdObfuscated() }"
+        aria-label="Addieren öffnen"
+      >
+        @if (childIdObfuscated()) {
+          <div class="module-preview" aria-hidden="true">
+            <app-plus-table
+              [childIdObfuscated]="childIdObfuscated()!"
+              [answersVisible]="true"
+            />
+          </div>
+        }
+        <div class="module-meta">
+          <span class="module-title">Addieren</span>
+          <span class="module-description">Rechenaufgaben ohne Kästchen</span>
+        </div>
+      </a>
+
+      <a
+        class="module-card"
+        [class.is-disabled]="loadState() !== 'ready'"
+        [attr.aria-disabled]="loadState() !== 'ready'"
+        [routerLink]="['/plustable-equations']"
+        [queryParams]="{ id: childIdObfuscated() }"
+        aria-label="Addieren-Gleichungen öffnen"
+      >
+        @if (childIdObfuscated()) {
+          <div class="module-preview" aria-hidden="true">
+            <app-plus-table-equations
+              [childIdObfuscated]="childIdObfuscated()!"
+              [answersVisible]="true"
+            />
+          </div>
+        }
+        <div class="module-meta">
+          <span class="module-title">Addieren</span>
+          <span class="module-description">Kästchenaufgaben</span>
+        </div>
+      </a>
+
+      <a
+        class="module-card"
+        [class.is-disabled]="loadState() !== 'ready'"
+        [attr.aria-disabled]="loadState() !== 'ready'"
+        [routerLink]="['/division-remainder']"
+        [queryParams]="{ id: childIdObfuscated() }"
+        aria-label="Division mit Rest öffnen"
+      >
+        @if (childIdObfuscated()) {
+          <div class="module-preview" aria-hidden="true">
+            <app-division-remainder-overview
+              [childIdObfuscated]="childIdObfuscated()!"
+            />
+          </div>
+        }
+        <div class="module-meta">
+          <span class="module-title">Division mit Rest</span>
+          <span class="module-description">Rechenaufgaben ohne Kästchen</span>
+        </div>
+      </a>
+    </section>
+  </div>
+</main>
