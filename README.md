@@ -1,6 +1,10 @@
 # timestable
 
-timestable is a learning app for practicing multiplication and division tables with a FastAPI backend and an Angular frontend.
+timestable is a learning app for practicing multiplication and division tables with a FastAPI backend and an Angular frontend. It primarily aims at making it easier to track what a child already can and cannot yet do when multiple people practice with them.
+
+## Production
+
+The production version is hosted at [1x1.rempfer.eu](https://1x1.rempfer.eu).
 
 ## Repository layout
 
