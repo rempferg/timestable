@@ -1,10 +1,10 @@
 # timestable
 
-timestable is a learning app for practicing multiplication and division tables with a FastAPI backend and an Angular frontend. It primarily aims at making it easier to track what a child already can and cannot yet do when multiple people practice with them.
+timestable is a learning app for practicing multiplication and division tables. It primarily aims at making it easier to track what a child already can and cannot yet do when multiple people practice with them. Theoretically, children could practice with the app by themselves, but mine don't. The app uses PostgresSQL and FastAPI for the backend, and an Angular frontend.
 
 ## Production
 
-The production version is hosted at [1x1.rempfer.eu](https://1x1.rempfer.eu).
+The production version is hosted at [1x1.rempfer.eu](https://1x1.rempfer.eu). When you access the site, it automatically creates a new randomized ID for you. You can share the link with the ID with other devices and people and they will see and manipulate the same state as you do.
 
 ## Repository layout
 
@@ -17,7 +17,9 @@ The production version is hosted at [1x1.rempfer.eu](https://1x1.rempfer.eu).
 
 Database:
 
-Install and run a PostgreSQL server.
+- Install and run a PostgreSQL server
+- Import `db/migrate.sql`
+- Put credentials for the database and a user with read/write access into the environment variables listed in `server/timestable.env.example` before launching the backend (as shown below)
 
 Frontend:
 
