@@ -11,9 +11,10 @@ services:
       - ./db/migrate.sql:/docker-entrypoint-initdb.d/001_migrate.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
-      interval: 10s
-      timeout: 5s
-      retries: 10
+      interval: 2s
+      timeout: 2s
+      retries: 15
+      start_period: 5s
 
   backend:
     build:
@@ -38,25 +39,24 @@ services:
           "-c",
           "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/', timeout=3)",
         ]
-      interval: 15s
-      timeout: 5s
-      retries: 10
+      interval: 2s
+      timeout: 3s
+      retries: 15
+      start_period: 5s
 
   web:
     build:
       context: .
       dockerfile: frontend/Dockerfile
     restart: unless-stopped
-    depends_on:
-      backend:
-        condition: service_healthy
     ports:
       - "7000:80"
     healthcheck:
       test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1/ || exit 1"]
-      interval: 15s
-      timeout: 5s
-      retries: 10
+      interval: 2s
+      timeout: 2s
+      retries: 15
+      start_period: 2s
 
 volumes:
   postgres_data:
