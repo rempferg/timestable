@@ -1,7 +1,5 @@
 from contextlib import contextmanager
 import os
-import hmac
-import hashlib
 from fastapi import FastAPI, HTTPException
 import psycopg2
 import psycopg2.pool
@@ -59,8 +57,6 @@ DB_PASSWORD = _required_env("TIMESTABLE_DB_PASSWORD")
 DB_PORT = int(os.getenv("TIMESTABLE_DB_PORT", "5432"))
 DB_OPTIONS = os.getenv("TIMESTABLE_DB_OPTIONS", "-c timezone=UTC")
 
-SECRET_KEY = _required_env("TIMESTABLE_SECRET_KEY").encode("utf-8")
-
 dbpool = psycopg2.pool.ThreadedConnectionPool(
     1,
     4,
@@ -89,11 +85,6 @@ def db_cursor():
 ## API
 
 OPAQUE_ID_BYTE_LENGTH = 8
-
-def obfuscate_id(transparent_id: int) -> bytes:
-    h = hmac.new(SECRET_KEY, str(transparent_id).encode(), hashlib.sha256).digest()
-    opaque_id = h[:OPAQUE_ID_BYTE_LENGTH]
-    return opaque_id
 
 # Base58 Alphabet (Bitcoin standard: no 0, O, I, l)
 B58_ALPHABET = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"
@@ -156,19 +147,10 @@ async def get_new_child_id():
             cur.execute(
                 '''
                 INSERT INTO children DEFAULT VALUES
-                RETURNING id_transparent
+                RETURNING id_obfuscated
                 '''
             )
-            id_transparent = cur.fetchone()[0]
-            id_obfuscated = obfuscate_id(id_transparent)
-            cur.execute(
-                '''
-                UPDATE children
-                SET id_obfuscated = %s
-                WHERE id_transparent = %s
-                ''',
-                (id_obfuscated, id_transparent)
-            )
+            id_obfuscated = cur.fetchone()[0]
             id_obfuscated_b58 = base58_encode(id_obfuscated)
     except Exception as e:
         print(cur.query)

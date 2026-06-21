@@ -1,0 +1,9 @@
+.git
+.github
+**/.DS_Store
+**/__pycache__
+**/*.pyc
+**/node_modules
+**/.angular/cache
+**/dist
+**/.venv
