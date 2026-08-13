@@ -30,7 +30,9 @@ export class WordListComponent {
   readonly childIdObfuscated = input<string | null>(null);
   readonly words = signal<Word[]>([]);
   readonly wordProgress = signal<Map<number, AnswerResult[]>>(new Map());
-  readonly sentenceBoxes = signal<SentenceBox[]>([{ words: [], correctionActive: false, saved: false }]);
+  readonly sentenceBoxes = signal<SentenceBox[]>([
+    { words: [], correctionActive: false, saved: false, saving: false }
+  ]);
   readonly sentenceBoxesRegion = viewChild<ElementRef<HTMLDivElement>>('sentenceBoxesRegion');
   readonly draggedBoxIndex = signal<number | null>(null);
   readonly draggedWordIndex = signal<number | null>(null);
@@ -176,7 +178,7 @@ export class WordListComponent {
       );
 
       if (boxIndex === updated.length - 1) {
-        updated.push({ words: [], correctionActive: false, saved: false });
+        updated.push({ words: [], correctionActive: false, saved: false, saving: false });
         afterNextRender(() => this.scrollSentenceBoxesToBottom(), { injector: this.injector });
       }
 
@@ -186,12 +188,12 @@ export class WordListComponent {
 
   private async saveBoxResults(boxIndex: number, box: SentenceBox): Promise<void> {
     const childId = this.childIdObfuscated();
-    if (!childId) {
+    if (!childId || box.saving) {
       return;
     }
 
     this.sentenceBoxes.update((boxes) =>
-      boxes.map((current, i) => (i === boxIndex ? { ...current, saved: true } : current))
+      boxes.map((current, i) => (i === boxIndex ? { ...current, saving: true } : current))
     );
 
     try {
@@ -200,10 +202,7 @@ export class WordListComponent {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           child_id_obfuscated: childId,
-          answers: box.words.map((item) => ({
-            word_id: item.word.id,
-            correct: item.status === 'correct'
-          }))
+          answers: this.dedupeWorstVerdict(box.words)
         })
       });
 
@@ -213,12 +212,25 @@ export class WordListComponent {
 
       await this.fetchWords();
       await this.fetchProgress();
+      this.sentenceBoxes.update((boxes) =>
+        boxes.map((current, i) => (i === boxIndex ? { ...current, saving: false, saved: true } : current))
+      );
     } catch (error) {
       console.error('Failed to store word answers', error);
       this.sentenceBoxes.update((boxes) =>
-        boxes.map((current, i) => (i === boxIndex ? { ...current, saved: false } : current))
+        boxes.map((current, i) => (i === boxIndex ? { ...current, saving: false } : current))
       );
     }
+  }
+
+  private dedupeWorstVerdict(items: SentenceItem[]): { word_id: number; correct: boolean }[] {
+    const correctByWordId = new Map<number, boolean>();
+    for (const item of items) {
+      const isCorrect = item.status === 'correct';
+      const existing = correctByWordId.get(item.word.id);
+      correctByWordId.set(item.word.id, existing === undefined ? isCorrect : existing && isCorrect);
+    }
+    return Array.from(correctByWordId.entries()).map(([word_id, correct]) => ({ word_id, correct }));
   }
 
   private scrollSentenceBoxesToBottom(): void {
@@ -495,6 +507,7 @@ type SentenceBox = {
   words: SentenceItem[];
   correctionActive: boolean;
   saved: boolean;
+  saving: boolean;
 };
 
 type AnswerResult = {

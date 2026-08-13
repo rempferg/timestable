@@ -103,9 +103,14 @@
   align-items: center;
 }
 
-.dictation-button:hover,
-.dictation-button:focus-visible {
+.dictation-button:not(:disabled):hover,
+.dictation-button:not(:disabled):focus-visible {
   background: #454547;
+}
+
+.dictation-button.is-saving {
+  opacity: 0.5;
+  cursor: default;
 }
 
 .drop-cursor {

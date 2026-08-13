@@ -1,4 +1,5 @@
 from contextlib import contextmanager
+from datetime import datetime, timedelta, timezone
 import os
 from fastapi import FastAPI, HTTPException
 import psycopg2
@@ -194,16 +195,24 @@ class WordAnswersPayload(BaseModel):
 async def store_word_answers(payload: WordAnswersPayload):
     '''Store spelling answers for a batch of words.'''
     child_id_transparent = deobfuscate_id(payload.child_id_obfuscated)
+    # Assign strictly increasing timestamps: now() is stable within a transaction, so a
+    # repeated word_id in the same submission would otherwise collide on the primary key.
+    base_time = datetime.now(timezone.utc)
     try:
         with db_cursor() as cur:
             cur.executemany(
                 '''
-                INSERT INTO word_list_answers (child_id_transparent, word_id, correct)
-                VALUES (%s, %s, %s)
+                INSERT INTO word_list_answers (child_id_transparent, word_id, correct, answered_at)
+                VALUES (%s, %s, %s, %s)
                 ''',
                 [
-                    (child_id_transparent, answer.word_id, answer.correct)
-                    for answer in payload.answers
+                    (
+                        child_id_transparent,
+                        answer.word_id,
+                        answer.correct,
+                        base_time + timedelta(microseconds=index)
+                    )
+                    for index, answer in enumerate(payload.answers)
                 ]
             )
     except Exception as e:

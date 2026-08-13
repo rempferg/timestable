@@ -97,7 +97,9 @@
               <button
                 type="button"
                 class="dictation-button"
-                [attr.aria-label]="boxState(box) === 'correcting' ? 'Ergebnis speichern' : 'Diktieren, korrigieren'"
+                [class.is-saving]="box.saving"
+                [disabled]="box.saving"
+                [attr.aria-label]="box.saving ? 'Wird gespeichert' : boxState(box) === 'correcting' ? 'Ergebnis speichern' : 'Diktieren, korrigieren'"
                 (click)="onPrimaryButtonClick(boxIndex)"
               >
                 @if (boxState(box) === 'correcting') {
