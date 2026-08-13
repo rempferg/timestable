@@ -60,6 +60,34 @@ export class WordListComponent {
   readonly displayedWords = computed(() =>
     this.preview() ? this.sortedWords().slice(0, 24) : this.sortedWords()
   );
+  readonly groupSegments = computed(() => {
+    const counts = new Map<number, number>();
+    for (const word of this.words()) {
+      const group = this.classifyWord(word.id).group;
+      counts.set(group, (counts.get(group) ?? 0) + 1);
+    }
+
+    const total = this.words().length;
+    if (total === 0) {
+      return [];
+    }
+
+    return [1, 2, 3, 4]
+      .map((group) => ({
+        group,
+        count: counts.get(group) ?? 0,
+        color: this.groupBarColors[group]
+      }))
+      .filter((segment) => segment.count > 0)
+      .map((segment) => ({ ...segment, percent: (segment.count / total) * 100 }));
+  });
+
+  private readonly groupBarColors: Record<number, string> = {
+    1: 'hsl(4 55% 55%)',
+    2: 'rgb(255, 208, 90)',
+    3: 'rgba(29, 29, 31, 0.15)',
+    4: 'rgb(63, 166, 101)'
+  };
 
   constructor() {
     void this.loadWords();

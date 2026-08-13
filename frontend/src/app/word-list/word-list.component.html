@@ -1,5 +1,17 @@
 @if (loadState() === 'ready') {
   @if (!preview()) {
+    @if (groupSegments().length > 0) {
+      <div class="stats-bar" aria-label="Fortschrittsübersicht">
+        @for (segment of groupSegments(); track segment.group) {
+          <span
+            class="stats-segment"
+            [style.width.%]="segment.percent"
+            [style.backgroundColor]="segment.color"
+            [attr.aria-label]="segment.count + ' Wörter'"
+          ></span>
+        }
+      </div>
+    }
     <div class="sentence-boxes-region" #sentenceBoxesRegion>
       @for (box of sentenceBoxes(); track $index; let boxIndex = $index) {
         <section
