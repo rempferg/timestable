@@ -1,6 +1,6 @@
 # timestable
 
-timestable is a learning app for practicing multiplication and division tables. It primarily aims at making it easier to track what a child already can and cannot yet do when multiple people practice with them. Theoretically, children could practice with the app by themselves, but mine don't. The app uses PostgresSQL and FastAPI for the backend, and an Angular frontend.
+timestable is a learning app for practicing 1-2 grade math and German. It primarily aims at making it easier to track what a child already can and cannot yet do when multiple people practice with them. Theoretically, children could practice with the app by themselves, but mine don't. The app uses PostgresSQL and FastAPI for the backend, and an Angular frontend.
 
 ## Production
 
