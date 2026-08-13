@@ -29,14 +29,24 @@ export class WordListComponent {
   readonly preview = input(false);
   readonly childIdObfuscated = input<string | null>(null);
   readonly words = signal<Word[]>([]);
+  readonly wordProgress = signal<Map<number, AnswerResult[]>>(new Map());
   readonly sentenceBoxes = signal<SentenceBox[]>([{ words: [], correctionActive: false, saved: false }]);
   readonly sentenceBoxesRegion = viewChild<ElementRef<HTMLDivElement>>('sentenceBoxesRegion');
   readonly draggedBoxIndex = signal<number | null>(null);
   readonly draggedWordIndex = signal<number | null>(null);
   readonly sentenceDropIndex = signal<number | null>(null);
   readonly loadState = signal<'loading' | 'ready' | 'error'>('loading');
+  readonly sortedWords = computed(() => {
+    const groupByWordId = new Map<number, number>();
+    for (const word of this.words()) {
+      groupByWordId.set(word.id, this.classifyWord(word.id).group);
+    }
+    return [...this.words()].sort(
+      (a, b) => (groupByWordId.get(a.id) ?? 3) - (groupByWordId.get(b.id) ?? 3)
+    );
+  });
   readonly displayedWords = computed(() =>
-    this.preview() ? this.words().slice(0, 24) : this.words()
+    this.preview() ? this.sortedWords().slice(0, 24) : this.sortedWords()
   );
 
   constructor() {
@@ -60,6 +70,7 @@ export class WordListComponent {
         i === lastIndex ? { ...box, words: [...box.words, { word, status: 'unset' }] } : box
       );
     });
+    afterNextRender(() => this.scrollSentenceBoxesToBottom(), { injector: this.injector });
   }
 
   onPrimaryButtonClick(boxIndex: number): void {
@@ -125,6 +136,7 @@ export class WordListComponent {
       }
 
       await this.fetchWords();
+      await this.fetchProgress();
     } catch (error) {
       console.error('Failed to store word answers', error);
       this.sentenceBoxes.update((boxes) =>
@@ -287,6 +299,7 @@ export class WordListComponent {
   private async loadWords(): Promise<void> {
     try {
       await this.fetchWords();
+      await this.fetchProgress();
       this.loadState.set('ready');
     } catch (error) {
       console.error('Failed to load words', error);
@@ -301,6 +314,89 @@ export class WordListComponent {
     }
 
     this.words.set((await response.json()) as Word[]);
+  }
+
+  private async fetchProgress(): Promise<void> {
+    const childId = this.childIdObfuscated();
+    if (!childId) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/words/progress/${childId}`);
+      if (!response.ok) {
+        return;
+      }
+
+      const payload = (await response.json()) as WordProgressEntry[];
+      const next = new Map<number, AnswerResult[]>();
+      for (const entry of payload) {
+        next.set(entry.word_id, entry.answers);
+      }
+      this.wordProgress.set(next);
+    } catch (error) {
+      console.error('Failed to load word progress', error);
+    }
+  }
+
+  wordColor(wordId: number): string | null {
+    return this.classifyWord(wordId).color;
+  }
+
+  private classifyWord(wordId: number): { group: number; color: string | null } {
+    const answers = this.wordProgress().get(wordId);
+    if (!answers || answers.length === 0) {
+      return { group: 3, color: null };
+    }
+
+    const sorted = [...answers].sort((a, b) => this.toMs(b.answered_at) - this.toMs(a.answered_at));
+    const last = sorted[0];
+
+    if (!last.correct) {
+      return { group: 1, color: 'hsl(4 55% 55%)' };
+    }
+
+    const lastIncorrectIndex = sorted.findIndex((answer) => !answer.correct);
+
+    if (lastIncorrectIndex === -1) {
+      // Never wrong: color by how many correct attempts it has taken, not by elapsed time.
+      const correctCount = sorted.length;
+      const t = this.clamp01((correctCount - 1) / 2);
+      return { group: correctCount >= 3 ? 4 : 2, color: this.gradientColor(t) };
+    }
+
+    const now = Date.now();
+    const streakAnswers = sorted.slice(0, lastIncorrectIndex);
+    const streakStartMs = this.toMs(streakAnswers[streakAnswers.length - 1].answered_at);
+    const streakDurationDays = (now - streakStartMs) / this.oneDayMs;
+
+    if (streakAnswers.length >= 3 && streakDurationDays >= 7) {
+      return { group: 4, color: this.masteredGreen };
+    }
+
+    // Not yet mastered: gradient from egg yellow (just answered) to green (streak nearing a week).
+    return { group: 2, color: this.gradientColor(this.clamp01(streakDurationDays / 7)) };
+  }
+
+  private readonly oneDayMs = 24 * 60 * 60 * 1000;
+  private readonly eggYellow = { r: 255, g: 208, b: 90 };
+  private readonly masteredGreenRgb = { r: 63, g: 166, b: 101 };
+  private readonly masteredGreen = 'rgb(63, 166, 101)';
+
+  private gradientColor(t: number): string {
+    const r = Math.round(this.eggYellow.r + (this.masteredGreenRgb.r - this.eggYellow.r) * t);
+    const g = Math.round(this.eggYellow.g + (this.masteredGreenRgb.g - this.eggYellow.g) * t);
+    const b = Math.round(this.eggYellow.b + (this.masteredGreenRgb.b - this.eggYellow.b) * t);
+    return `rgb(${r}, ${g}, ${b})`;
+  }
+
+  private clamp01(value: number): number {
+    return Math.min(1, Math.max(0, value));
+  }
+
+  private toMs(value: string): number {
+    const parsed = Date.parse(value);
+    return Number.isNaN(parsed) ? 0 : parsed;
   }
 }
 
@@ -323,4 +419,14 @@ type SentenceBox = {
   words: SentenceItem[];
   correctionActive: boolean;
   saved: boolean;
+};
+
+type AnswerResult = {
+  correct: boolean;
+  answered_at: string;
+};
+
+type WordProgressEntry = {
+  word_id: number;
+  answers: AnswerResult[];
 };

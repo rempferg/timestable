@@ -43,6 +43,18 @@
   }
 }
 
+.menubar.single-button .action-button {
+  min-height: 32px;
+  padding: 8px 0;
+}
+
+@media (min-width: 768px) {
+  .menubar.single-button .action-button {
+    min-height: 43px;
+    padding: 12px 0;
+  }
+}
+
 .action-button:hover {
   background-color: rgba(0, 0, 0, 0.06);
 }

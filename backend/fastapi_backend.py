@@ -211,6 +211,47 @@ async def store_word_answers(payload: WordAnswersPayload):
     return {"status": "success"}
 
 
+@subapi.get('/words/progress/{child_id_obfuscated}')
+async def get_words_progress(child_id_obfuscated: str):
+    '''Get spelling progress for a child.'''
+    child_id_transparent = deobfuscate_id(child_id_obfuscated)
+    try:
+        with db_cursor() as cur:
+            cur.execute(
+                '''
+                SELECT COALESCE(JSON_AGG(q ORDER BY q.word_id), '[]'::json)
+                FROM (
+                  SELECT
+                    word_id,
+                    JSON_AGG(
+                      JSON_BUILD_OBJECT(
+                        'correct', correct,
+                        'answered_at', to_char(answered_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"')
+                      )
+                      ORDER BY answered_at DESC
+                    ) AS answers
+                  FROM (
+                    SELECT
+                      word_id, correct, answered_at,
+                      ROW_NUMBER() OVER (
+                        PARTITION BY child_id_transparent, word_id
+                        ORDER BY answered_at DESC
+                      ) AS rn
+                    FROM word_list_answers
+                    WHERE child_id_transparent = %s
+                  ) t
+                  WHERE rn <= 20
+                  GROUP BY word_id
+                ) q;
+                ''',
+                (child_id_transparent,)
+            )
+            res = cur.fetchone()[0]
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    return res
+
+
 def deobfuscate_id(obfuscated_id_b58: str) -> int:
     obfuscated_id = base58_decode(obfuscated_id_b58, expected_length=OPAQUE_ID_BYTE_LENGTH)
     try:

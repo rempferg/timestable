@@ -79,9 +79,14 @@
   <div class="word-flow" [class.is-preview]="preview()" aria-label="Wortliste">
     @for (word of displayedWords(); track word.id) {
       @if (preview()) {
-        <span class="word">{{ word.word }}</span>
+        <span class="word" [style.backgroundColor]="wordColor(word.id)">{{ word.word }}</span>
       } @else {
-        <button type="button" class="word word-button" (click)="addToSentence(word)">
+        <button
+          type="button"
+          class="word word-button"
+          [style.backgroundColor]="wordColor(word.id)"
+          (click)="addToSentence(word)"
+        >
           {{ word.word }}
         </button>
       }

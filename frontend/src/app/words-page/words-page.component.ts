@@ -1,12 +1,12 @@
 import { ChangeDetectionStrategy, Component, OnInit, signal } from '@angular/core';
-import { ActivatedRoute, RouterModule } from '@angular/router';
+import { ActivatedRoute } from '@angular/router';
 
 import { LearningMenubarComponent } from '../learning-menubar/learning-menubar.component';
 import { WordListComponent } from '../word-list/word-list.component';
 
 @Component({
   selector: 'app-words-page',
-  imports: [RouterModule, LearningMenubarComponent, WordListComponent],
+  imports: [LearningMenubarComponent, WordListComponent],
   templateUrl: './words-page.component.html',
   styleUrl: './words-page.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush

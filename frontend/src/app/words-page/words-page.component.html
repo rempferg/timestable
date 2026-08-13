@@ -7,11 +7,6 @@
       <p class="status">{{ errorMessage() }}</p>
       <button type="button" class="retry-button" (click)="initChildId()">Erneut versuchen</button>
     } @else if (childIdObfuscated()) {
-      <header class="page-header">
-        <p class="eyebrow">Wörter lernen</p>
-        <h1>Rechtschreibung</h1>
-      </header>
-
       <app-word-list class="word-list-region" [childIdObfuscated]="childIdObfuscated()" />
     }
   </div>
