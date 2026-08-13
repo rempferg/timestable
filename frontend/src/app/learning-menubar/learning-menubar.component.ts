@@ -11,6 +11,7 @@ import { RouterModule } from '@angular/router';
 })
 export class LearningMenubarComponent {
   @Input() answersVisible = false;
+  @Input() showVisibilityToggle = true;
   @Output() readonly visibilityToggle = new EventEmitter<void>();
 
   onToggleVisibility(): void {

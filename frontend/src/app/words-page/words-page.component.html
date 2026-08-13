@@ -1,9 +1,18 @@
 <main class="page">
-  <header class="page-header">
-    <a class="home-link" [routerLink]="['/']" queryParamsHandling="preserve">Zurück</a>
-    <p class="eyebrow">Wörter lernen</p>
-    <h1>Rechtschreibung</h1>
-  </header>
+  <app-learning-menubar [showVisibilityToggle]="false" />
+  <div class="page-body">
+    @if (loadState() === 'loading') {
+      <p class="status">Lädt...</p>
+    } @else if (loadState() === 'error') {
+      <p class="status">{{ errorMessage() }}</p>
+      <button type="button" class="retry-button" (click)="initChildId()">Erneut versuchen</button>
+    } @else if (childIdObfuscated()) {
+      <header class="page-header">
+        <p class="eyebrow">Wörter lernen</p>
+        <h1>Rechtschreibung</h1>
+      </header>
 
-  <app-word-list />
+      <app-word-list class="word-list-region" [childIdObfuscated]="childIdObfuscated()" />
+    }
+  </div>
 </main>

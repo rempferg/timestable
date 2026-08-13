@@ -3,6 +3,7 @@ import os
 from fastapi import FastAPI, HTTPException
 import psycopg2
 import psycopg2.pool
+from pydantic import BaseModel
 
 
 ### General setup
@@ -177,6 +178,37 @@ async def get_words():
             ]
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+class WordAnswer(BaseModel):
+    word_id: int
+    correct: bool
+
+
+class WordAnswersPayload(BaseModel):
+    child_id_obfuscated: str
+    answers: list[WordAnswer]
+
+
+@subapi.post('/words/answers')
+async def store_word_answers(payload: WordAnswersPayload):
+    '''Store spelling answers for a batch of words.'''
+    child_id_transparent = deobfuscate_id(payload.child_id_obfuscated)
+    try:
+        with db_cursor() as cur:
+            cur.executemany(
+                '''
+                INSERT INTO word_list_answers (child_id_transparent, word_id, correct)
+                VALUES (%s, %s, %s)
+                ''',
+                [
+                    (child_id_transparent, answer.word_id, answer.correct)
+                    for answer in payload.answers
+                ]
+            )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    return {"status": "success"}
 
 
 def deobfuscate_id(obfuscated_id_b58: str) -> int:

@@ -9,6 +9,10 @@
   width: 100%;
 }
 
+.menubar.single-button {
+  grid-template-columns: 1fr;
+}
+
 .menubar > .action-button + .action-button {
   border-left: 1px solid rgba(0, 0, 0, 0.12);
 }
