@@ -36,6 +36,18 @@ export class WordListComponent {
   readonly draggedWordIndex = signal<number | null>(null);
   readonly sentenceDropIndex = signal<number | null>(null);
   readonly loadState = signal<'loading' | 'ready' | 'error'>('loading');
+  readonly activeInsertBoxIndex = signal<number | null>(null);
+  readonly insertQuery = signal('');
+  readonly insertInput = viewChild<ElementRef<HTMLInputElement>>('insertInput');
+  readonly insertSuggestions = computed(() => {
+    const query = this.insertQuery().trim().toLowerCase();
+    if (!query) {
+      return [];
+    }
+    return this.words()
+      .filter((word) => word.word.toLowerCase().startsWith(query))
+      .slice(0, 8);
+  });
   readonly sortedWords = computed(() => {
     const groupByWordId = new Map<number, number>();
     for (const word of this.words()) {
@@ -71,6 +83,42 @@ export class WordListComponent {
       );
     });
     afterNextRender(() => this.scrollSentenceBoxesToBottom(), { injector: this.injector });
+  }
+
+  onSentenceFlowClick(boxIndex: number, event: MouseEvent): void {
+    const box = this.sentenceBoxes()[boxIndex];
+    if (!box || this.boxState(box) !== 'assembling') {
+      return;
+    }
+    if (event.target !== event.currentTarget) {
+      return;
+    }
+
+    this.activeInsertBoxIndex.set(boxIndex);
+    this.insertQuery.set('');
+    afterNextRender(() => this.insertInput()?.nativeElement.focus(), { injector: this.injector });
+  }
+
+  onInsertQueryChange(event: Event): void {
+    this.insertQuery.set((event.target as HTMLInputElement).value);
+  }
+
+  selectSuggestion(word: Word): void {
+    this.addToSentence(word);
+    this.cancelInsert();
+  }
+
+  cancelInsert(): void {
+    this.activeInsertBoxIndex.set(null);
+    this.insertQuery.set('');
+  }
+
+  suggestionsPosition(): { top: number; left: number } {
+    const rect = this.insertInput()?.nativeElement.getBoundingClientRect();
+    if (!rect) {
+      return { top: 0, left: 0 };
+    }
+    return { top: rect.bottom + 6, left: rect.left };
   }
 
   onPrimaryButtonClick(boxIndex: number): void {
