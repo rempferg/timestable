@@ -159,6 +159,26 @@ async def get_new_child_id():
     return {"child_id": id_obfuscated_b58}
 
 
+@subapi.get('/words')
+async def get_words():
+    '''Get all spelling words ordered by frequency.'''
+    try:
+        with db_cursor() as cur:
+            cur.execute(
+                '''
+                SELECT id, word, frequency_dewiki
+                FROM words
+                ORDER BY frequency_dewiki DESC NULLS LAST, word ASC
+                '''
+            )
+            return [
+                {'id': word_id, 'word': word, 'frequency': frequency}
+                for word_id, word, frequency in cur.fetchall()
+            ]
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 def deobfuscate_id(obfuscated_id_b58: str) -> int:
     obfuscated_id = base58_decode(obfuscated_id_b58, expected_length=OPAQUE_ID_BYTE_LENGTH)
     try:

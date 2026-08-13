@@ -6,6 +6,7 @@ import { PlustableEquationsPageComponent } from './plustable-equations-page/plus
 import { PlustablePageComponent } from './plustable-page/plustable-page.component';
 import { TimestablePageComponent } from './timestable-page/timestable-page.component';
 import { TimestableEquationsPageComponent } from './timestable-equations-page/timestable-equations-page.component';
+import { WordsPageComponent } from './words-page/words-page.component';
 
 export const routes: Routes = [
 	{
@@ -31,5 +32,9 @@ export const routes: Routes = [
 	{
 		path: 'division-remainder',
 		component: DivisionRemainderPageComponent
+	},
+	{
+		path: 'words',
+		component: WordsPageComponent
 	}
 ];

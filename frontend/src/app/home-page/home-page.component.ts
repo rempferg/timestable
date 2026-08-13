@@ -7,6 +7,7 @@ import { PlusTableEquationsComponent } from '../plus-table-equations/plus-table-
 import { PlusTableComponent } from '../plus-table/plus-table.component';
 import { TimesTableEquationsComponent } from '../times-table-equations/times-table-equations.component';
 import { TimesTableComponent } from '../times-table/times-table.component';
+import { WordListComponent } from '../word-list/word-list.component';
 
 @Component({
   selector: 'app-home-page',
@@ -17,7 +18,8 @@ import { TimesTableComponent } from '../times-table/times-table.component';
     TimesTableEquationsComponent,
     PlusTableComponent,
     PlusTableEquationsComponent,
-    DivisionRemainderOverviewComponent
+    DivisionRemainderOverviewComponent,
+    WordListComponent
   ],
   templateUrl: './home-page.component.html',
   styleUrl: './home-page.component.scss',

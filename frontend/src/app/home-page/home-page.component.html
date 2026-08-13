@@ -121,6 +121,23 @@
           <span class="module-description">Rechenaufgaben ohne Kästchen</span>
         </div>
       </a>
+
+      <a
+        class="module-card"
+        [class.is-disabled]="loadState() !== 'ready'"
+        [attr.aria-disabled]="loadState() !== 'ready'"
+        [routerLink]="['/words']"
+        [queryParams]="{ id: childIdObfuscated() }"
+        aria-label="Rechtschreibung öffnen"
+      >
+        <div class="module-preview" aria-hidden="true">
+          <app-word-list [preview]="true" />
+        </div>
+        <div class="module-meta">
+          <span class="module-title">Rechtschreibung</span>
+          <span class="module-description">Wörter lesen und schreiben</span>
+        </div>
+      </a>
     </section>
   </div>
 </main>

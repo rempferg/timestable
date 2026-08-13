@@ -1,0 +1,87 @@
+@if (loadState() === 'ready') {
+  @if (!preview()) {
+    <section
+      class="sentence-box"
+      aria-label="Satz bilden"
+      (dragover)="setEndDropIndexWhenOverSentenceContainer($event)"
+      (dragleave)="clearSentenceDropIndexWhenLeaving($event)"
+      (drop)="dropSentenceWord($event)"
+    >
+      @if (sentenceWords().length === 0) {
+        <p class="sentence-placeholder">Klicke Wörter an um einen Satz zu bilden</p>
+      } @else {
+        <div
+          class="sentence-flow"
+          aria-label="Dein Satz"
+          (dragover)="$event.preventDefault()"
+        >
+          @for (item of sentenceWords(); track $index) {
+            @if (sentenceDropIndex() === $index) {
+              <span class="drop-cursor" aria-hidden="true"></span>
+            }
+            <span
+              class="word sentence-word"
+              [class.is-dragging]="draggedSentenceIndex() === $index"
+              [class.is-correct]="item.status === 'correct'"
+              [class.is-incorrect]="item.status === 'incorrect'"
+              [attr.draggable]="sentenceState() !== 'correcting'"
+              (dragstart)="startSentenceDrag($index, $event)"
+              (dragenter)="setSentenceDropIndex($index, $event)"
+              (dragover)="setSentenceDropIndex($index, $event)"
+              (dragend)="endSentenceDrag()"
+              (click)="toggleWordStatus($index)"
+            >
+              {{ displaySentenceWord(item.word.word, $index) }}
+            </span>
+          }
+          <span
+            class="sentence-end-drop-zone"
+            (dragenter)="setSentenceDropIndex(sentenceWords().length, $event)"
+            (dragover)="setSentenceDropIndex(sentenceWords().length, $event)"
+            (drop)="dropSentenceWord($event, sentenceWords().length)"
+          >
+            @if (sentenceDropIndex() === sentenceWords().length) {
+              <span class="drop-cursor" aria-hidden="true"></span>
+            }
+          </span>
+        </div>
+        <button
+          type="button"
+          class="dictation-button"
+          [attr.aria-label]="sentenceState() === 'correcting' ? 'Ergebnis speichern' : 'Diktieren, korrigieren'"
+          (click)="onPrimaryButtonClick()"
+        >
+          @if (sentenceState() === 'correcting') {
+            <span class="material-icons" aria-hidden="true">lock</span>
+            <span class="dictation-button-label">
+              <span>Ergebnis</span>
+              <span>speichern</span>
+            </span>
+          } @else {
+            <span class="material-icons" aria-hidden="true">edit</span>
+            <span class="dictation-button-label">
+              <span>Diktieren,</span>
+              <span>korrigieren</span>
+            </span>
+          }
+        </button>
+      }
+    </section>
+  }
+
+  <div class="word-flow" [class.is-preview]="preview()" aria-label="Wortliste">
+    @for (word of displayedWords(); track word.id) {
+      @if (preview()) {
+        <span class="word">{{ word.word }}</span>
+      } @else {
+        <button type="button" class="word word-button" [disabled]="sentenceState() === 'correcting'" (click)="addToSentence(word)">
+          {{ word.word }}
+        </button>
+      }
+    }
+  </div>
+} @else if (loadState() === 'error') {
+  <p class="status">Wörter konnten nicht geladen werden.</p>
+} @else {
+  <p class="status">Wörter werden geladen...</p>
+}

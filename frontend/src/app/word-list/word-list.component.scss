@@ -1,0 +1,163 @@
+:host {
+  display: block;
+}
+
+.sentence-box {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  min-height: 7rem;
+  box-sizing: border-box;
+  margin-bottom: 28px;
+  padding: 16px;
+  border: 2px solid rgba(29, 29, 31, 0.2);
+  background: rgba(255, 255, 255, 0.65);
+}
+
+.sentence-placeholder {
+  width: 100%;
+  margin: 0;
+  color: rgba(20, 20, 20, 0.55);
+  font: 500 1rem/1.4 "Space Grotesk", "Avenir Next", "Segoe UI", sans-serif;
+  text-align: center;
+}
+
+.sentence-flow {
+  display: flex;
+  flex: 1;
+  flex-flow: row wrap;
+  gap: 10px;
+}
+
+.dictation-button {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  flex: 0 0 auto;
+  width: 5.5rem;
+  height: 4.5rem;
+  box-sizing: border-box;
+  border: none;
+  border-radius: 10px;
+  background: #5a5a5c;
+  color: #f6f2ed;
+  cursor: pointer;
+  font: 600 0.7rem/1.15 "Space Grotesk", "Avenir Next", "Segoe UI", sans-serif;
+  text-align: center;
+}
+
+.dictation-button .material-icons {
+  font-size: 22px;
+  line-height: 1;
+}
+
+.dictation-button-label {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.dictation-button:hover,
+.dictation-button:focus-visible {
+  background: #454547;
+}
+
+.drop-cursor {
+  width: 3px;
+  min-height: 2.5rem;
+  background: #1d1d1f;
+  pointer-events: none;
+}
+
+.sentence-end-drop-zone {
+  display: inline-flex;
+  align-items: center;
+  min-width: 36px;
+  min-height: 2.5rem;
+}
+
+.sentence-word {
+  cursor: grab;
+}
+
+.sentence-word:active {
+  cursor: grabbing;
+}
+
+.sentence-word.is-dragging {
+  opacity: 0.5;
+}
+
+.sentence-word.is-correct {
+  border-color: transparent;
+  background: hsl(142 45% 45%);
+  color: #fff;
+}
+
+.sentence-word.is-incorrect {
+  border-color: transparent;
+  background: hsl(4 55% 55%);
+  color: #fff;
+}
+
+.sentence-word.is-correct:hover {
+  background: hsl(142 70% 40%);
+}
+
+.sentence-word.is-incorrect:hover {
+  background: hsl(4 75% 48%);
+}
+
+.word-flow {
+  display: flex;
+  flex-flow: row wrap;
+  align-content: flex-start;
+  gap: 10px;
+}
+
+.word {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.5rem;
+  padding: 5px 12px;
+  border: 1px solid rgba(29, 29, 31, 0.14);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.82);
+  color: #1d1d1f;
+  font: 600 1rem/1.2 "Space Grotesk", "Avenir Next", "Segoe UI", sans-serif;
+}
+
+.word-button {
+  cursor: pointer;
+}
+
+.word-button:hover,
+.word-button:focus-visible {
+  border-color: rgba(29, 29, 31, 0.65);
+  background: #fff;
+}
+
+.word-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.is-preview {
+  max-height: 100%;
+  overflow: hidden;
+  gap: 6px;
+}
+
+.is-preview .word {
+  min-height: 1.8rem;
+  padding: 3px 8px;
+  font-size: 0.75rem;
+}
+
+.status {
+  margin: 0;
+  color: rgba(20, 20, 20, 0.65);
+  font: 500 0.9rem/1.4 "Space Grotesk", "Avenir Next", "Segoe UI", sans-serif;
+}
