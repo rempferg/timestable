@@ -177,8 +177,9 @@
   cursor: pointer;
 }
 
-.word-suggestion:hover {
-  background: rgba(29, 29, 31, 0.08);
+.word-suggestion:hover,
+.word-suggestion.is-highlighted {
+  background: rgba(29, 29, 31, 0.25) !important;
 }
 
 .sentence-word {

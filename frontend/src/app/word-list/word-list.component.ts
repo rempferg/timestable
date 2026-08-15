@@ -40,6 +40,7 @@ export class WordListComponent {
   readonly loadState = signal<'loading' | 'ready' | 'error'>('loading');
   readonly activeInsertBoxIndex = signal<number | null>(null);
   readonly insertQuery = signal('');
+  readonly highlightedSuggestionIndex = signal<number | null>(null);
   readonly insertInput = viewChild<ElementRef<HTMLInputElement>>('insertInput');
   readonly insertSuggestions = computed(() => {
     const query = this.insertQuery().trim().toLowerCase();
@@ -125,18 +126,56 @@ export class WordListComponent {
       return;
     }
 
+    this.startInsert(boxIndex);
+  }
+
+  private startInsert(boxIndex: number): void {
     this.activeInsertBoxIndex.set(boxIndex);
     this.insertQuery.set('');
+    this.highlightedSuggestionIndex.set(null);
     afterNextRender(() => this.insertInput()?.nativeElement.focus(), { injector: this.injector });
   }
 
   onInsertQueryChange(event: Event): void {
     this.insertQuery.set((event.target as HTMLInputElement).value);
+    this.highlightedSuggestionIndex.set(null);
+  }
+
+  onInsertKeydown(event: KeyboardEvent): void {
+    const suggestions = this.insertSuggestions();
+    if (suggestions.length === 0) {
+      return;
+    }
+
+    if (event.key === 'ArrowDown') {
+      event.preventDefault();
+      const current = this.highlightedSuggestionIndex();
+      this.highlightedSuggestionIndex.set(current === null ? 0 : (current + 1) % suggestions.length);
+    } else if (event.key === 'ArrowUp') {
+      event.preventDefault();
+      const current = this.highlightedSuggestionIndex();
+      this.highlightedSuggestionIndex.set(
+        current === null ? suggestions.length - 1 : (current - 1 + suggestions.length) % suggestions.length
+      );
+    } else if (event.key === 'Enter') {
+      event.preventDefault();
+      const selected =
+        this.highlightedSuggestionIndex() ?? 0;
+      const suggestion = suggestions[selected];
+      if (suggestion) {
+        this.selectSuggestion(suggestion);
+      }
+    }
   }
 
   selectSuggestion(word: Word): void {
+    const boxIndex = this.activeInsertBoxIndex();
     this.addToSentence(word);
-    this.cancelInsert();
+    if (boxIndex === null) {
+      this.cancelInsert();
+      return;
+    }
+    this.startInsert(boxIndex);
   }
 
   cancelInsert(): void {

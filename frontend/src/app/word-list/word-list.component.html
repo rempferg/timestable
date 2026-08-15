@@ -56,6 +56,7 @@
                   autocomplete="off"
                   [value]="insertQuery()"
                   (input)="onInsertQueryChange($event)"
+                  (keydown)="onInsertKeydown($event)"
                   (keydown.escape)="cancelInsert()"
                   (blur)="cancelInsert()"
                 />
@@ -70,6 +71,7 @@
                       <button
                         type="button"
                         class="word-suggestion"
+                        [class.is-highlighted]="$index === highlightedSuggestionIndex()"
                         [style.backgroundColor]="wordColor(suggestion.id)"
                         (mousedown)="$event.preventDefault(); selectSuggestion(suggestion)"
                       >
