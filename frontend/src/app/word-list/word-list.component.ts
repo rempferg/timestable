@@ -489,8 +489,8 @@ export class WordListComponent {
     if (lastIncorrectIndex === -1) {
       // Never wrong: color by how many correct attempts it has taken, not by elapsed time.
       const correctCount = sorted.length;
-      const t = this.clamp01((correctCount - 1) / 2);
-      return { group: correctCount >= 3 ? 4 : 2, color: this.gradientColor(t) };
+      const t = this.clamp01(correctCount / 2);
+      return { group: correctCount >= 2 ? 4 : 2, color: this.gradientColor(t) };
     }
 
     const now = Date.now();
