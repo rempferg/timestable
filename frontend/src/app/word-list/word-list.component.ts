@@ -115,12 +115,13 @@ export class WordListComponent {
     afterNextRender(() => this.scrollSentenceBoxesToBottom(), { injector: this.injector });
   }
 
-  onSentenceFlowClick(boxIndex: number, event: MouseEvent): void {
+  onSentenceFlowClick(boxIndex: number): void {
     const box = this.sentenceBoxes()[boxIndex];
-    if (!box || this.boxState(box) !== 'assembling') {
+    if (!box) {
       return;
     }
-    if (event.target !== event.currentTarget) {
+    const state = this.boxState(box);
+    if (state !== 'assembling' && state !== 'empty') {
       return;
     }
 

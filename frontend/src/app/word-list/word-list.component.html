@@ -22,65 +22,65 @@
           (dragleave)="clearSentenceDropIndexWhenLeaving(boxIndex, $event)"
           (drop)="dropSentenceWord(boxIndex, $event)"
         >
-          @if (box.words.length === 0) {
-            <p class="sentence-placeholder">Klicke Wörter an um einen Satz zu bilden</p>
-          } @else {
-            <div
-              class="sentence-flow"
-              aria-label="Dein Satz"
-              (dragover)="$event.preventDefault()"
-              (click)="onSentenceFlowClick(boxIndex, $event)"
-            >
-              @for (item of box.words; track $index; let wordIndex = $index) {
-                @if (draggedBoxIndex() === boxIndex && sentenceDropIndex() === wordIndex) {
-                  <span class="drop-cursor" aria-hidden="true"></span>
-                }
-                <span
-                  class="word sentence-word"
-                  [class.is-dragging]="draggedBoxIndex() === boxIndex && draggedWordIndex() === wordIndex"
-                  [class.is-correct]="item.status === 'correct'"
-                  [class.is-incorrect]="item.status === 'incorrect'"
-                  [attr.draggable]="boxState(box) !== 'correcting'"
-                  (dragstart)="startSentenceDrag(boxIndex, wordIndex, $event)"
-                  (dragenter)="setSentenceDropIndex(boxIndex, wordIndex, $event)"
-                  (dragover)="setSentenceDropIndex(boxIndex, wordIndex, $event)"
-                  (dragend)="endSentenceDrag(boxIndex)"
-                  (click)="toggleWordStatus(boxIndex, wordIndex)"
-                >
-                  {{ displaySentenceWord(item.word.word, wordIndex) }}
-                </span>
+          <div
+            class="sentence-flow"
+            [class.is-empty]="box.words.length === 0"
+            aria-label="Dein Satz"
+            (dragover)="$event.preventDefault()"
+          >
+            @for (item of box.words; track $index; let wordIndex = $index) {
+              @if (draggedBoxIndex() === boxIndex && sentenceDropIndex() === wordIndex) {
+                <span class="drop-cursor" aria-hidden="true"></span>
               }
-              @if (activeInsertBoxIndex() === boxIndex) {
-                <span class="word-insert" (click)="$event.stopPropagation()">
-                  <input
-                    #insertInput
-                    type="text"
-                    class="word-insert-input"
-                    autocomplete="off"
-                    [value]="insertQuery()"
-                    (input)="onInsertQueryChange($event)"
-                    (keydown.escape)="cancelInsert()"
-                    (blur)="cancelInsert()"
-                  />
-                  @if (insertSuggestions().length > 0) {
-                    @let position = suggestionsPosition();
-                    <div
-                      class="word-suggestions"
-                      [style.top.px]="position.top"
-                      [style.left.px]="position.left"
-                    >
-                      @for (suggestion of insertSuggestions(); track suggestion.id) {
-                        <button
-                          type="button"
-                          class="word-suggestion"
-                          (mousedown)="$event.preventDefault(); selectSuggestion(suggestion)"
-                        >
-                          {{ suggestion.word }}
-                        </button>
-                      }
-                    </div>
-                  }
-                </span>
+              <span
+                class="word sentence-word"
+                [class.is-dragging]="draggedBoxIndex() === boxIndex && draggedWordIndex() === wordIndex"
+                [class.is-correct]="item.status === 'correct'"
+                [class.is-incorrect]="item.status === 'incorrect'"
+                [attr.draggable]="boxState(box) !== 'correcting'"
+                (dragstart)="startSentenceDrag(boxIndex, wordIndex, $event)"
+                (dragenter)="setSentenceDropIndex(boxIndex, wordIndex, $event)"
+                (dragover)="setSentenceDropIndex(boxIndex, wordIndex, $event)"
+                (dragend)="endSentenceDrag(boxIndex)"
+                (click)="toggleWordStatus(boxIndex, wordIndex)"
+              >
+                {{ displaySentenceWord(item.word.word, wordIndex) }}
+              </span>
+            }
+            @if (activeInsertBoxIndex() === boxIndex) {
+              <span class="word-insert" (click)="$event.stopPropagation()">
+                <input
+                  #insertInput
+                  type="text"
+                  class="word-insert-input"
+                  autocomplete="off"
+                  [value]="insertQuery()"
+                  (input)="onInsertQueryChange($event)"
+                  (keydown.escape)="cancelInsert()"
+                  (blur)="cancelInsert()"
+                />
+                @if (insertSuggestions().length > 0) {
+                  @let position = suggestionsPosition();
+                  <div
+                    class="word-suggestions"
+                    [style.top.px]="position.top"
+                    [style.left.px]="position.left"
+                  >
+                    @for (suggestion of insertSuggestions(); track suggestion.id) {
+                      <button
+                        type="button"
+                        class="word-suggestion"
+                        (mousedown)="$event.preventDefault(); selectSuggestion(suggestion)"
+                      >
+                        {{ suggestion.word }}
+                      </button>
+                    }
+                  </div>
+                }
+              </span>
+            } @else if (boxState(box) === 'assembling' || boxState(box) === 'empty') {
+              @if (draggedBoxIndex() === boxIndex && sentenceDropIndex() === box.words.length) {
+                <span class="drop-cursor" aria-hidden="true"></span>
               }
               <span
                 class="sentence-end-drop-zone"
@@ -88,35 +88,43 @@
                 (dragover)="setSentenceDropIndex(boxIndex, box.words.length, $event)"
                 (drop)="dropSentenceWord(boxIndex, $event, box.words.length)"
               >
-                @if (draggedBoxIndex() === boxIndex && sentenceDropIndex() === box.words.length) {
-                  <span class="drop-cursor" aria-hidden="true"></span>
-                }
+                <button
+                  type="button"
+                  class="word word-button add-word-button"
+                  [attr.aria-label]="'Freitext-Wort einfügen'"
+                  (click)="onSentenceFlowClick(boxIndex)"
+                >
+                  <span class="material-icons" aria-hidden="true">add</span>
+                </button>
               </span>
-            </div>
-            @if (boxState(box) !== 'submitted') {
-              <button
-                type="button"
-                class="dictation-button"
-                [class.is-saving]="box.saving"
-                [disabled]="box.saving"
-                [attr.aria-label]="box.saving ? 'Wird gespeichert' : boxState(box) === 'correcting' ? 'Ergebnis speichern' : 'Diktieren, korrigieren'"
-                (click)="onPrimaryButtonClick(boxIndex)"
-              >
-                @if (boxState(box) === 'correcting') {
-                  <span class="material-icons" aria-hidden="true">lock</span>
-                  <span class="dictation-button-label">
-                    <span>Ergebnis</span>
-                    <span>speichern</span>
-                  </span>
-                } @else {
-                  <span class="material-icons" aria-hidden="true">edit</span>
-                  <span class="dictation-button-label">
-                    <span>Diktieren,</span>
-                    <span>korrigieren</span>
-                  </span>
-                }
-              </button>
             }
+            @if (box.words.length === 0) {
+              <p class="sentence-placeholder">Klicke Wörter an um einen Satz zu bilden</p>
+            }
+          </div>
+          @if (box.words.length > 0 && boxState(box) !== 'submitted') {
+            <button
+              type="button"
+              class="dictation-button"
+              [class.is-saving]="box.saving"
+              [disabled]="box.saving"
+              [attr.aria-label]="box.saving ? 'Wird gespeichert' : boxState(box) === 'correcting' ? 'Ergebnis speichern' : 'Diktieren, korrigieren'"
+              (click)="onPrimaryButtonClick(boxIndex)"
+            >
+              @if (boxState(box) === 'correcting') {
+                <span class="material-icons" aria-hidden="true">lock</span>
+                <span class="dictation-button-label">
+                  <span>Ergebnis</span>
+                  <span>speichern</span>
+                </span>
+              } @else {
+                <span class="material-icons" aria-hidden="true">edit</span>
+                <span class="dictation-button-label">
+                  <span>Diktieren,</span>
+                  <span>korrigieren</span>
+                </span>
+              }
+            </button>
           }
         </section>
       }
