@@ -70,6 +70,7 @@
                       <button
                         type="button"
                         class="word-suggestion"
+                        [style.backgroundColor]="wordColor(suggestion.id)"
                         (mousedown)="$event.preventDefault(); selectSuggestion(suggestion)"
                       >
                         {{ suggestion.word }}
