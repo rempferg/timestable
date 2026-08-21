@@ -39,6 +39,7 @@ export class WordListComponent {
   readonly sentenceDropIndex = signal<number | null>(null);
   readonly loadState = signal<'loading' | 'ready' | 'error'>('loading');
   readonly activeInsertBoxIndex = signal<number | null>(null);
+  readonly generatingBoxIndex = signal<number | null>(null);
   readonly insertQuery = signal('');
   readonly highlightedSuggestionIndex = signal<number | null>(null);
   readonly insertInput = viewChild<ElementRef<HTMLInputElement>>('insertInput');
@@ -205,6 +206,43 @@ export class WordListComponent {
     }
   }
 
+  onGenerateSentenceClick(boxIndex: number): void {
+    const box = this.sentenceBoxes()[boxIndex];
+    const childId = this.childIdObfuscated();
+    if (!box || this.boxState(box) !== 'empty' || !childId || this.generatingBoxIndex() !== null) {
+      return;
+    }
+
+    void this.generateSentence(boxIndex, childId);
+  }
+
+  private async generateSentence(boxIndex: number, childId: string): Promise<void> {
+    this.generatingBoxIndex.set(boxIndex);
+    try {
+      const response = await fetch(`${API_BASE_URL}/words/sentence/${childId}`);
+      if (!response.ok) {
+        throw new Error(`Failed to generate sentence: ${response.status}`);
+      }
+
+      const payload = (await response.json()) as GeneratedSentence;
+      this.sentenceBoxes.update((boxes) =>
+        boxes.map((current, i) =>
+          i === boxIndex && current.words.length === 0
+            ? {
+                ...current,
+                words: payload.words.map((word) => ({ word, status: 'unset' as const }))
+              }
+            : current
+        )
+      );
+      afterNextRender(() => this.scrollSentenceBoxesToBottom(), { injector: this.injector });
+    } catch (error) {
+      console.error('Failed to generate sentence', error);
+    } finally {
+      this.generatingBoxIndex.set(null);
+    }
+  }
+
   private lockBox(boxIndex: number): void {
     this.sentenceBoxes.update((boxes) => {
       const updated = boxes.map((current, i) =>
@@ -281,6 +319,10 @@ export class WordListComponent {
   }
 
   toggleWordStatus(boxIndex: number, wordIndex: number): void {
+    const box = this.sentenceBoxes()[boxIndex];
+    if (!box || this.boxState(box) !== 'correcting') {
+      return;
+    }
     this.sentenceBoxes.update((boxes) =>
       boxes.map((box, i) =>
         i !== boxIndex
@@ -548,6 +590,11 @@ type SentenceBox = {
   correctionActive: boolean;
   saved: boolean;
   saving: boolean;
+};
+
+type GeneratedSentence = {
+  sentence: string;
+  words: Word[];
 };
 
 type AnswerResult = {

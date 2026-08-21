@@ -128,6 +128,21 @@
                 </span>
               }
             </button>
+          } @else if (boxState(box) === 'empty') {
+            <button
+              type="button"
+              class="dictation-button"
+              [class.is-saving]="generatingBoxIndex() === boxIndex"
+              [disabled]="generatingBoxIndex() === boxIndex"
+              [attr.aria-label]="generatingBoxIndex() === boxIndex ? 'Satz wird generiert' : 'Satz generieren'"
+              (click)="onGenerateSentenceClick(boxIndex)"
+            >
+              <span class="material-icons" aria-hidden="true">auto_awesome</span>
+              <span class="dictation-button-label">
+                <span>Satz</span>
+                <span>generieren</span>
+              </span>
+            </button>
           }
         </section>
       }

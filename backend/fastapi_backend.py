@@ -1,10 +1,13 @@
 from contextlib import contextmanager
 from datetime import datetime, timedelta, timezone
+import json
 import os
 from fastapi import FastAPI, HTTPException
 import psycopg2
 import psycopg2.pool
 from pydantic import BaseModel
+import urllib.error
+import urllib.request
 
 
 ### General setup
@@ -282,6 +285,197 @@ def deobfuscate_id(obfuscated_id_b58: str) -> int:
         print(cur.statusmessage)
         raise HTTPException(status_code=500, detail=str(e))
     return transparent_id
+
+
+# Mirrors the answer history length the frontend uses for its word grouping.
+WORD_PROGRESS_ANSWER_LIMIT = 20
+
+# AI sentence generation through the OpenCode Zen subscription.
+
+OPENCODE_ZEN_RESPONSES_URL = 'https://opencode.ai/zen/v1/responses'
+OPENCODE_ZEN_MODEL = 'muse-spark-1.2-contributor-free'
+OPENCODE_ZEN_API_KEY_ENV = 'OPENCODE_ZEN_API_KEY'
+
+# Number of highest-priority words handed to the model as candidates.
+SENTENCE_PROMPT_WORD_LIMIT = 50
+
+# Prompt order differs from the frontend display order (1, 2, 3, 4):
+# recently wrong first, then never tried, then shaky, then mastered.
+AI_PROMPT_GROUP_PRIORITY = {1: 0, 3: 1, 2: 2, 4: 3}
+
+SENTENCE_PROMPT_LEADING = (
+    'Create a sentence exclusively with words from this word list. '
+    'Earlier words in the list have higher priority. '
+    'The order of the words does not matter - grammatical correctness does. '
+    'Keep every word in its natural part of speech: do not use nouns (capitalized) '
+    'as other word types and vice versa. '
+    "Don't overthink it. Give me the first sentence you come up with.\n\n"
+    'Word list: '
+)
+SENTENCE_PROMPT_TRAILING = '\n\nAnswer with the sentence only. No quotes, no explanation.'
+
+
+def _word_progress_group(answers: list[dict], now: datetime) -> int:
+    '''Group a word like the frontend word list does (1 needs practice ... 4 mastered).
+
+    `answers` must be ordered newest first with at most WORD_PROGRESS_ANSWER_LIMIT entries,
+    using naive UTC timestamps just like the database returns them.
+    '''
+    if not answers:
+        return 3
+
+    if not answers[0]['correct']:
+        return 1
+
+    last_incorrect_index = next(
+        (index for index, answer in enumerate(answers) if not answer['correct']),
+        None
+    )
+
+    if last_incorrect_index is None:
+        return 4 if len(answers) >= 2 else 2
+
+    streak_answers_count = last_incorrect_index
+    streak_start = answers[last_incorrect_index - 1]['answered_at']
+    streak_duration_days = (now - streak_start).total_seconds() / timedelta(days=1).total_seconds()
+
+    if streak_answers_count >= 3 and streak_duration_days >= 7:
+        return 4
+    return 2
+
+
+@subapi.get('/words/sentence/{child_id_obfuscated}')
+async def generate_word_sentence(child_id_obfuscated: str):
+    '''Generate a sentence for a child from their most urgent spelling words.'''
+    child_id_transparent = deobfuscate_id(child_id_obfuscated)
+    try:
+        with db_cursor() as cur:
+            cur.execute(
+                '''
+                SELECT id, word, frequency_dewiki
+                FROM words
+                ORDER BY frequency_dewiki DESC NULLS LAST, word ASC
+                '''
+            )
+            words = [
+                {'id': word_id, 'word': word, 'frequency': frequency}
+                for word_id, word, frequency in cur.fetchall()
+            ]
+            cur.execute(
+                f'''
+                SELECT word_id, correct, answered_at
+                FROM (
+                  SELECT
+                    word_id, correct, answered_at,
+                    ROW_NUMBER() OVER (
+                      PARTITION BY word_id
+                      ORDER BY answered_at DESC
+                    ) AS rn
+                  FROM word_list_answers
+                  WHERE child_id_transparent = %s
+                ) t
+                WHERE rn <= {WORD_PROGRESS_ANSWER_LIMIT}
+                ORDER BY word_id, rn
+                ''',
+                (child_id_transparent,)
+            )
+            answers_by_word_id: dict[int, list[dict]] = {}
+            for word_id, correct, answered_at in cur.fetchall():
+                answers_by_word_id.setdefault(word_id, []).append(
+                    {'correct': correct, 'answered_at': answered_at}
+                )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+    # Database timestamps are naive UTC values, so compare against naive UTC now.
+    now = datetime.now(timezone.utc).replace(tzinfo=None)
+
+    def prompt_priority(word: dict) -> int:
+        group = _word_progress_group(answers_by_word_id.get(word['id'], []), now)
+        return AI_PROMPT_GROUP_PRIORITY[group]
+
+    ordered_words = sorted(words, key=prompt_priority)
+    candidate_words = ordered_words[:SENTENCE_PROMPT_WORD_LIMIT]
+    if not candidate_words:
+        return {'sentence': '', 'words': []}
+
+    prompt = SENTENCE_PROMPT_LEADING + ', '.join(
+        entry['word'] for entry in candidate_words
+    ) + SENTENCE_PROMPT_TRAILING
+
+    sentence = _request_zen_sentence(prompt)
+
+    # Map the sentence back to our word entries so the frontend can show them as chips.
+    word_by_normalized = {entry['word'].lower(): entry for entry in words}
+    strip_characters = '.,!?;:"\'„“”‚‘’()[]{}–—-'
+    matched_words = []
+    seen_word_ids = set()
+    for token in sentence.split():
+        normalized = token.strip(strip_characters).lower()
+        if not normalized or normalized in seen_word_ids:
+            continue
+        entry = word_by_normalized.get(normalized)
+        if entry is not None:
+            seen_word_ids.add(normalized)
+            matched_words.append(entry)
+
+    return {'sentence': sentence, 'words': matched_words}
+
+
+def _request_zen_sentence(prompt: str) -> str:
+    '''Ask the OpenCode Zen model to write a sentence and return its answer text.'''
+    api_key = os.getenv(OPENCODE_ZEN_API_KEY_ENV)
+    if not api_key:
+        raise HTTPException(
+            status_code=500,
+            detail=f'Missing required environment variable: {OPENCODE_ZEN_API_KEY_ENV}'
+        )
+
+    payload = {
+        'model': OPENCODE_ZEN_MODEL,
+        'reasoning': {'effort': 'minimal'},
+        'input': prompt,
+    }
+    request = urllib.request.Request(
+        OPENCODE_ZEN_RESPONSES_URL,
+        data=json.dumps(payload).encode('utf-8'),
+        headers={
+            'Content-Type': 'application/json',
+            'Authorization': f'Bearer {api_key}',
+            # The default "Python-urllib" user agent is rejected by Cloudflare (error 1010).
+            'User-Agent': 'timestable-backend/0.1'
+        },
+        method='POST'
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=30) as response:
+            body = json.loads(response.read().decode('utf-8'))
+    except urllib.error.HTTPError as e:
+        detail = e.read().decode('utf-8', errors='replace')
+        raise HTTPException(
+            status_code=502,
+            detail=f'Sentence generation failed: {e.code} {detail}'
+        ) from e
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f'Sentence generation failed: {e}') from e
+
+    # OpenAI Responses API format: text lives in output[] message items' output_text parts.
+    text_parts = []
+    for item in body.get('output', []):
+        if item.get('type') == 'message':
+            for part in item.get('content', []):
+                if part.get('type') == 'output_text':
+                    text_parts.append(part.get('text', ''))
+
+    if not text_parts and isinstance(body.get('output_text'), str):
+        text_parts.append(body['output_text'])
+
+    sentence = ''.join(text_parts).strip()
+    if not sentence:
+        raise HTTPException(status_code=502, detail='Sentence generation returned no text')
+    return sentence
 
 
 @subapi.get('/timestable/progress/{child_id_obfuscated}')

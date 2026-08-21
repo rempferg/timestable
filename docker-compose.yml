@@ -31,6 +31,7 @@ services:
       TIMESTABLE_DB_PASSWORD: timestable-internal-password
       TIMESTABLE_DB_PORT: 5432
       TIMESTABLE_DB_OPTIONS: -c timezone=UTC
+      OPENCODE_ZEN_API_KEY: your-opencode-zen-api-key
     healthcheck:
       test:
         [
