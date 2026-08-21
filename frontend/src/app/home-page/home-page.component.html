@@ -141,7 +141,9 @@
 
       <a
         class="module-card"
-        href="https://rempferg.github.io/math_attack/"
+        [class.is-disabled]="loadState() !== 'ready'"
+        [attr.aria-disabled]="loadState() !== 'ready'"
+        [href]="mathAttackUrl()"
         target="_blank"
         rel="noopener noreferrer"
         aria-label="Math Attack öffnen"

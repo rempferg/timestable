@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, OnInit, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, OnInit, computed, signal } from '@angular/core';
 import { ActivatedRoute, RouterModule } from '@angular/router';
 
 import { API_BASE_URL } from '../api.config';
@@ -29,6 +29,12 @@ export class HomePageComponent implements OnInit {
   readonly childIdObfuscated = signal<string | null>(null);
   readonly loadState = signal<'loading' | 'ready' | 'error'>('loading');
   readonly errorMessage = signal<string | null>(null);
+  readonly mathAttackUrl = computed(() => {
+    const childId = this.childIdObfuscated();
+    return childId
+      ? `https://rempferg.github.io/math_attack/?id=${childId}`
+      : 'https://rempferg.github.io/math_attack/';
+  });
 
   constructor(
     private readonly route: ActivatedRoute
