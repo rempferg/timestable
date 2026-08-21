@@ -292,9 +292,23 @@ WORD_PROGRESS_ANSWER_LIMIT = 20
 
 # AI sentence generation through the OpenCode Zen subscription.
 
-OPENCODE_ZEN_RESPONSES_URL = 'https://opencode.ai/zen/v1/responses'
-OPENCODE_ZEN_MODEL = 'muse-spark-1.2-contributor-free'
+OPENCODE_ZEN_RESPONSES_URL = 'https://opencode.ai/zen/go/v1/responses'
+OPENCODE_ZEN_CHAT_COMPLETIONS_URL = 'https://opencode.ai/zen/go/v1/chat/completions'
 OPENCODE_ZEN_API_KEY_ENV = 'OPENCODE_ZEN_API_KEY'
+
+# Switch models by commenting out one config dict and enabling the other.
+# The endpoints use different API styles (Responses API vs Chat Completions API),
+# handled in _request_zen_sentence.
+OPENCODE_ZEN_MODEL_CONFIG = {
+    'model': 'deepseek-v4-flash',
+    'url': OPENCODE_ZEN_CHAT_COMPLETIONS_URL,
+    'reasoning_effort': 'low',
+}
+# OPENCODE_ZEN_MODEL_CONFIG = {
+#     'model': 'muse-spark-1.2-contributor',
+#     'url': OPENCODE_ZEN_RESPONSES_URL,
+#     'reasoning_effort': 'minimal',
+# }
 
 # Number of highest-priority words handed to the model as candidates.
 SENTENCE_PROMPT_WORD_LIMIT = 50
@@ -309,6 +323,7 @@ SENTENCE_PROMPT_LEADING = (
     'The order of the words does not matter - grammatical correctness does. '
     'Keep every word in its natural part of speech: do not use nouns (capitalized) '
     'as other word types and vice versa. '
+    'Ideally the sentence is 7-10 words long, if possible. '
     "Don't overthink it. Give me the first sentence you come up with.\n\n"
     'Word list: '
 )
@@ -431,13 +446,22 @@ def _request_zen_sentence(prompt: str) -> str:
             detail=f'Missing required environment variable: {OPENCODE_ZEN_API_KEY_ENV}'
         )
 
-    payload = {
-        'model': OPENCODE_ZEN_MODEL,
-        'reasoning': {'effort': 'minimal'},
-        'input': prompt,
-    }
+    if OPENCODE_ZEN_MODEL_CONFIG['url'] == OPENCODE_ZEN_CHAT_COMPLETIONS_URL:
+        # OpenAI Chat Completions API style.
+        payload = {
+            'model': OPENCODE_ZEN_MODEL_CONFIG['model'],
+            'reasoning_effort': OPENCODE_ZEN_MODEL_CONFIG['reasoning_effort'],
+            'messages': [{'role': 'user', 'content': prompt}]
+        }
+    else:
+        # OpenAI Responses API style.
+        payload = {
+            'model': OPENCODE_ZEN_MODEL_CONFIG['model'],
+            'reasoning': {'effort': OPENCODE_ZEN_MODEL_CONFIG['reasoning_effort']},
+            'input': prompt,
+        }
     request = urllib.request.Request(
-        OPENCODE_ZEN_RESPONSES_URL,
+        OPENCODE_ZEN_MODEL_CONFIG['url'],
         data=json.dumps(payload).encode('utf-8'),
         headers={
             'Content-Type': 'application/json',
@@ -461,21 +485,33 @@ def _request_zen_sentence(prompt: str) -> str:
     except Exception as e:
         raise HTTPException(status_code=502, detail=f'Sentence generation failed: {e}') from e
 
+    sentence = _extract_sentence_text(body)
+    if not sentence:
+        raise HTTPException(status_code=502, detail='Sentence generation returned no text')
+    return sentence
+
+
+def _extract_sentence_text(body: dict) -> str:
+    '''Extract answer text from Chat Completions or Responses API payloads.'''
+    choices = body.get('choices')
+    if isinstance(choices, list) and choices:
+        message = choices[0].get('message', {})
+        content = message.get('content')
+        if isinstance(content, str) and content.strip():
+            return content.strip()
+
     # OpenAI Responses API format: text lives in output[] message items' output_text parts.
     text_parts = []
-    for item in body.get('output', []):
-        if item.get('type') == 'message':
-            for part in item.get('content', []):
-                if part.get('type') == 'output_text':
+    for item in body.get('output') or []:
+        if isinstance(item, dict) and item.get('type') == 'message':
+            for part in item.get('content') or []:
+                if isinstance(part, dict) and part.get('type') == 'output_text':
                     text_parts.append(part.get('text', ''))
 
     if not text_parts and isinstance(body.get('output_text'), str):
         text_parts.append(body['output_text'])
 
-    sentence = ''.join(text_parts).strip()
-    if not sentence:
-        raise HTTPException(status_code=502, detail='Sentence generation returned no text')
-    return sentence
+    return ''.join(text_parts).strip()
 
 
 @subapi.get('/timestable/progress/{child_id_obfuscated}')
