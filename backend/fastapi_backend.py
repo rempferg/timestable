@@ -2,7 +2,7 @@ from contextlib import contextmanager
 from datetime import datetime, timedelta, timezone
 import json
 import os
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Query
 import psycopg2
 import psycopg2.pool
 from pydantic import BaseModel
@@ -329,6 +329,38 @@ SENTENCE_PROMPT_LEADING = (
 )
 SENTENCE_PROMPT_TRAILING = '\n\nAnswer with the sentence only. No quotes, no explanation.'
 
+# Upper bound for the number of wrongly answered words handled per request.
+MISTAKES_WORD_LIMIT_MAX = 50
+MISTAKES_WORD_LIMIT_DEFAULT = 25
+
+MISTAKE_MISSPELLING_COUNT = 3
+
+# Generating practice aids for a whole batch of words can take well over 30 seconds.
+MISTAKES_REQUEST_TIMEOUT = 120
+
+MISTAKES_PROMPT_LEADING = (
+    'For each word in this list of German spelling words, do two things. '
+    'First, give exactly 3 common misspellings that a German elementary school child '
+    '(age 6-10) might realistically write instead of the correct spelling. '
+    'Common mistakes at this age are: mixing up capitalization, '
+    'mixing up i and ie, mixing up e and ä, '
+    'inserting or omitting the silent h, '
+    'and inserting or omitting double consonants. '
+    'Draw all misspellings from these mistake patterns where applicable; '
+    'at least one misspelling should only differ in capitalization. '
+    'Second, write one short and simple German sentence that contains the word spelled correctly. '
+    'Never place the word in the first position of the sentence. '
+    'The sentence should use easy vocabulary a 6-10 year old knows '
+    'and be about 5-8 words long.\n\n'
+    'Word list: '
+)
+MISTAKES_PROMPT_TRAILING = (
+    '\n\nKeep every word exactly as given. '
+    'Answer with a JSON array only. No markdown fences, no explanation: '
+    '[{"word": "<original word>", "misspellings": ["<misspelling>", "<misspelling>", "<misspelling>"], '
+    '"sentence": "<sentence>"}]'
+)
+
 
 def _word_progress_group(answers: list[dict], now: datetime) -> int:
     '''Group a word like the frontend word list does (1 needs practice ... 4 mastered).
@@ -437,8 +469,121 @@ async def generate_word_sentence(child_id_obfuscated: str):
     return {'sentence': sentence, 'words': matched_words}
 
 
+@subapi.get('/words/mistakes/{child_id_obfuscated}')
+async def get_word_mistakes(
+    child_id_obfuscated: str,
+    limit: int = Query(
+        default=MISTAKES_WORD_LIMIT_DEFAULT,
+        ge=1,
+        le=MISTAKES_WORD_LIMIT_MAX
+    )
+):
+    '''Get words the child last answered incorrectly, with AI-generated practice aids.'''
+    child_id_transparent = deobfuscate_id(child_id_obfuscated)
+    try:
+        with db_cursor() as cur:
+            cur.execute(
+                '''
+                SELECT words.word
+                FROM (
+                  SELECT DISTINCT ON (word_id) word_id, correct, answered_at
+                  FROM word_list_answers
+                  WHERE child_id_transparent = %s
+                  ORDER BY word_id, answered_at DESC
+                ) latest_answers
+                JOIN words ON words.id = latest_answers.word_id
+                WHERE latest_answers.correct = false
+                ORDER BY random()
+                LIMIT %s
+                ''',
+                (child_id_transparent, limit)
+            )
+            wrong_words = [row[0] for row in cur.fetchall()]
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+    if not wrong_words:
+        return []
+
+    prompt = MISTAKES_PROMPT_LEADING + ', '.join(wrong_words) + MISTAKES_PROMPT_TRAILING
+    answer_text = _request_zen_text(
+        prompt,
+        context='Misspelling generation',
+        timeout=MISTAKES_REQUEST_TIMEOUT
+    )
+    generated_entries = _parse_mistakes_json(answer_text)
+
+    generated_by_word: dict[str, dict] = {}
+    for entry in generated_entries:
+        word = entry.get('word')
+        if isinstance(word, str) and word.strip():
+            generated_by_word[word.strip().lower()] = entry
+
+    return [
+        {
+            'word': word,
+            'misspellings': _clean_misspellings(
+                generated_by_word.get(word.lower(), {}).get('misspellings')
+            ),
+            'sentence': _clean_sentence(
+                generated_by_word.get(word.lower(), {}).get('sentence')
+            )
+        }
+        for word in wrong_words
+    ]
+
+
+def _parse_mistakes_json(text: str) -> list[dict]:
+    '''Parse the JSON array of mistake entries out of a model answer.'''
+    start = text.find('[')
+    end = text.rfind(']')
+    if start == -1 or end == -1 or end <= start:
+        return []
+    try:
+        parsed = json.loads(text[start:end + 1])
+    except json.JSONDecodeError:
+        return []
+    if not isinstance(parsed, list):
+        return []
+    return [entry for entry in parsed if isinstance(entry, dict)]
+
+
+def _clean_misspellings(raw_misspellings: object) -> list[str]:
+    '''Return up to MISTAKE_MISSPELLING_COUNT non-empty misspelling strings.'''
+    if not isinstance(raw_misspellings, list):
+        return []
+    cleaned = [
+        misspelling.strip()
+        for misspelling in raw_misspellings
+        if isinstance(misspelling, str) and misspelling.strip()
+    ]
+    return cleaned[:MISTAKE_MISSPELLING_COUNT]
+
+
+def _clean_sentence(raw_sentence: object) -> str:
+    '''Return the sentence as a stripped string, or an empty string if invalid.'''
+    if isinstance(raw_sentence, str):
+        return raw_sentence.strip()
+    return ''
+
+
 def _request_zen_sentence(prompt: str) -> str:
     '''Ask the OpenCode Zen model to write a sentence and return its answer text.'''
+    return _request_zen_text(prompt, context='Sentence generation')
+
+
+def _request_zen_text(
+    prompt: str,
+    *,
+    context: str,
+    timeout: int = 30,
+    retries: int = 1
+) -> str:
+    '''Send a prompt to the OpenCode Zen model and return its answer text.
+
+    Network-level failures (e.g. read timeouts) are retried `retries` times,
+    while API-level HTTP errors fail immediately.
+    '''
     api_key = os.getenv(OPENCODE_ZEN_API_KEY_ENV)
     if not api_key:
         raise HTTPException(
@@ -471,27 +616,30 @@ def _request_zen_sentence(prompt: str) -> str:
         },
         method='POST'
     )
-    try:
-        with urllib.request.urlopen(request, timeout=30) as response:
-            body = json.loads(response.read().decode('utf-8'))
-    except urllib.error.HTTPError as e:
-        detail = e.read().decode('utf-8', errors='replace')
-        raise HTTPException(
-            status_code=502,
-            detail=f'Sentence generation failed: {e.code} {detail}'
-        ) from e
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=502, detail=f'Sentence generation failed: {e}') from e
+    for attempt in range(retries + 1):
+        try:
+            with urllib.request.urlopen(request, timeout=timeout) as response:
+                body = json.loads(response.read().decode('utf-8'))
+            break
+        except urllib.error.HTTPError as e:
+            detail = e.read().decode('utf-8', errors='replace')
+            raise HTTPException(
+                status_code=502,
+                detail=f'{context} failed: {e.code} {detail}'
+            ) from e
+        except HTTPException:
+            raise
+        except Exception as e:
+            if attempt >= retries:
+                raise HTTPException(status_code=502, detail=f'{context} failed: {e}') from e
 
-    sentence = _extract_sentence_text(body)
-    if not sentence:
-        raise HTTPException(status_code=502, detail='Sentence generation returned no text')
-    return sentence
+    text = _extract_answer_text(body)
+    if not text:
+        raise HTTPException(status_code=502, detail=f'{context} returned no text')
+    return text
 
 
-def _extract_sentence_text(body: dict) -> str:
+def _extract_answer_text(body: dict) -> str:
     '''Extract answer text from Chat Completions or Responses API payloads.'''
     choices = body.get('choices')
     if isinstance(choices, list) and choices:
