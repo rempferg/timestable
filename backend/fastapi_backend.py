@@ -509,7 +509,8 @@ async def get_word_mistakes(
     answer_text = _request_zen_text(
         prompt,
         context='Misspelling generation',
-        timeout=MISTAKES_REQUEST_TIMEOUT
+        timeout=MISTAKES_REQUEST_TIMEOUT,
+        expected_entries=len(wrong_words)
     )
     generated_entries = _parse_mistakes_json(answer_text)
 
@@ -577,12 +578,16 @@ def _request_zen_text(
     *,
     context: str,
     timeout: int = 30,
-    retries: int = 1
+    retries: int = 1,
+    expected_entries: int | None = None
 ) -> str:
     '''Send a prompt to the OpenCode Zen model and return its answer text.
 
-    Network-level failures (e.g. read timeouts) are retried `retries` times,
-    while API-level HTTP errors fail immediately.
+    Streams the answer so it is available as soon as the model finished generating;
+    `timeout` bounds the wait for the connection and between stream chunks, not the
+    total duration. If `expected_entries` is given, reading stops early once a JSON
+    array with that many entries is complete. Network-level failures are retried
+    `retries` times, while API-level HTTP errors fail immediately.
     '''
     api_key = os.getenv(OPENCODE_ZEN_API_KEY_ENV)
     if not api_key:
@@ -596,6 +601,7 @@ def _request_zen_text(
         payload = {
             'model': OPENCODE_ZEN_MODEL_CONFIG['model'],
             'reasoning_effort': OPENCODE_ZEN_MODEL_CONFIG['reasoning_effort'],
+            'stream': True,
             'messages': [{'role': 'user', 'content': prompt}]
         }
     else:
@@ -603,6 +609,7 @@ def _request_zen_text(
         payload = {
             'model': OPENCODE_ZEN_MODEL_CONFIG['model'],
             'reasoning': {'effort': OPENCODE_ZEN_MODEL_CONFIG['reasoning_effort']},
+            'stream': True,
             'input': prompt,
         }
     request = urllib.request.Request(
@@ -618,9 +625,7 @@ def _request_zen_text(
     )
     for attempt in range(retries + 1):
         try:
-            with urllib.request.urlopen(request, timeout=timeout) as response:
-                body = json.loads(response.read().decode('utf-8'))
-            break
+            return _stream_zen_answer(request, timeout, expected_entries)
         except urllib.error.HTTPError as e:
             detail = e.read().decode('utf-8', errors='replace')
             raise HTTPException(
@@ -633,10 +638,72 @@ def _request_zen_text(
             if attempt >= retries:
                 raise HTTPException(status_code=502, detail=f'{context} failed: {e}') from e
 
-    text = _extract_answer_text(body)
-    if not text:
-        raise HTTPException(status_code=502, detail=f'{context} returned no text')
-    return text
+    raise HTTPException(status_code=502, detail=f'{context} returned no text')
+
+
+def _stream_zen_answer(
+    request: urllib.request.Request,
+    timeout: int,
+    expected_entries: int | None
+) -> str:
+    '''Read a streamed Zen answer and return its text.'''
+    lines = []
+    with urllib.request.urlopen(request, timeout=timeout) as response:
+        for raw_line in response:
+            lines.append(raw_line.decode('utf-8', errors='replace'))
+
+    chunks = []
+    saw_stream_event = False
+    for raw_line in lines:
+        line = raw_line.strip()
+        if not line.startswith('data:'):
+            continue
+        event_payload = line[len('data:'):].strip()
+        if event_payload == '[DONE]':
+            break
+        try:
+            event = json.loads(event_payload)
+        except json.JSONDecodeError:
+            continue
+        if not isinstance(event, dict):
+            continue
+        saw_stream_event = True
+        delta = _extract_delta_text(event)
+        if not delta:
+            continue
+        chunks.append(delta)
+        if expected_entries is not None:
+            parsed = _parse_mistakes_json(''.join(chunks))
+            if len(parsed) >= expected_entries:
+                break
+
+    if not saw_stream_event:
+        # The endpoint ignored the stream flag and answered with a regular JSON body.
+        try:
+            body = json.loads(''.join(lines))
+        except json.JSONDecodeError:
+            return ''
+        return _extract_answer_text(body)
+
+    return ''.join(chunks)
+
+
+def _extract_delta_text(event: dict) -> str:
+    '''Extract the text delta from a Chat Completions or Responses API stream event.'''
+    choices = event.get('choices')
+    if isinstance(choices, list) and choices:
+        delta = choices[0].get('delta')
+        if isinstance(delta, dict):
+            content = delta.get('content')
+            if isinstance(content, str):
+                return content
+
+    if event.get('type') == 'response.output_text.delta':
+        delta = event.get('delta')
+        if isinstance(delta, str):
+            return delta
+
+    return ''
 
 
 def _extract_answer_text(body: dict) -> str:
