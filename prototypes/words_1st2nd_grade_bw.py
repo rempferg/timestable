@@ -420,7 +420,7 @@ from contextlib import contextmanager
 DB_HOST = os.getenv("TIMESTABLE_DB_HOST", "localhost")
 DB_NAME = os.getenv("TIMESTABLE_DB_NAME", "timestable")
 DB_USER = os.getenv("TIMESTABLE_DB_USER", "timestable")
-DB_PASSWORD = os.getenv("TIMESTABLE_DB_PASSWORD", "nq354grhIOEEM")
+DB_PASSWORD = os.getenv("TIMESTABLE_DB_PASSWORD")
 DB_PORT = int(os.getenv("TIMESTABLE_DB_PORT", "5432"))
 DB_OPTIONS = os.getenv("TIMESTABLE_DB_OPTIONS", "-c timezone=UTC")
 
