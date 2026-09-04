@@ -8,6 +8,7 @@ import psycopg2.pool
 from pydantic import BaseModel
 import urllib.error
 import urllib.request
+import uuid
 
 
 ### General setup
@@ -619,7 +620,9 @@ def _request_zen_text(
             'Content-Type': 'application/json',
             'Authorization': f'Bearer {api_key}',
             # The default "Python-urllib" user agent is rejected by Cloudflare (error 1010).
-            'User-Agent': 'timestable-backend/0.1'
+            'User-Agent': 'timestable-backend/0.1',
+            # One stable ID per conversation; each of our model calls is a stateless one-shot conversation.
+            'x-opencode-session': str(uuid.uuid4())
         },
         method='POST'
     )
