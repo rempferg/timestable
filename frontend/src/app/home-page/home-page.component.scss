@@ -167,6 +167,31 @@
   object-fit: cover;
 }
 
+.home-footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 10px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(10, 10, 10, 0.08);
+  font-size: 0.85rem;
+  color: rgba(20, 20, 20, 0.55);
+}
+
+.home-footer a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.home-footer a:hover,
+.home-footer a:focus-visible {
+  text-decoration: underline;
+}
+
+.footer-separator {
+  opacity: 0.7;
+}
+
 @media (max-width: 600px) {
   .home {
     padding: 28px 20px 36px;
