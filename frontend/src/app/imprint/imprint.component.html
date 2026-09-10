@@ -28,5 +28,48 @@
     <p>
       E-Mail: <a href="mailto:kontakt&commat;1x1.rempfer.eu">kontakt&commat;1x1.rempfer.eu</a>
     </p>
+
+    <h2>Kontaktformular</h2>
+    <form class="contact-form" (ngSubmit)="sendMessage()">
+      <label class="field">
+        <span class="field-label">Dein Name</span>
+        <input
+          class="field-input"
+          type="text"
+          autocomplete="name"
+          [value]="name()"
+          (input)="name.set($any($event.target).value)"
+        >
+      </label>
+
+      <label class="field">
+        <span class="field-label">Deine E-Mailadresse für Antworten</span>
+        <input
+          class="field-input"
+          type="email"
+          autocomplete="email"
+          [value]="email()"
+          (input)="email.set($any($event.target).value)"
+        >
+      </label>
+
+      <label class="field">
+        <span class="field-label">Nachricht</span>
+        <textarea
+          class="field-input"
+          rows="5"
+          [value]="content()"
+          (input)="content.set($any($event.target).value)"
+        ></textarea>
+      </label>
+
+      <button type="submit" class="send-button" [disabled]="sending()">
+        {{ sending() ? 'Senden…' : 'Senden' }}
+      </button>
+
+      @if (status()) {
+        <p class="form-status" role="status">{{ status() }}</p>
+      }
+    </form>
   </article>
 </main>

@@ -68,3 +68,68 @@
 .legal-content a {
   color: #005cbb;
 }
+
+.contact-form {
+  display: grid;
+  gap: 14px;
+  margin-top: 1em;
+}
+
+.field {
+  display: grid;
+  gap: 6px;
+}
+
+.field-label {
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: rgba(20, 20, 20, 0.75);
+}
+
+.field-input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 10px 14px;
+  border: 1px solid rgba(10, 10, 10, 0.18);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.8);
+  color: inherit;
+  font-family: inherit;
+  font-size: 1rem;
+  outline: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+}
+
+.field-input:focus {
+  border-color: rgba(0, 92, 187, 0.6);
+  box-shadow: 0 0 0 3px rgba(0, 92, 187, 0.16);
+  background: rgba(255, 255, 255, 0.98);
+}
+
+.send-button {
+  justify-self: start;
+  border: none;
+  background: #1d1d1f;
+  color: #f6f2ed;
+  padding: 10px 22px;
+  border-radius: 999px;
+  font-family: inherit;
+  font-size: 0.95rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.send-button:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+.send-button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.form-status {
+  font-size: 0.9rem;
+  color: rgba(20, 20, 20, 0.7);
+}

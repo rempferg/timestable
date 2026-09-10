@@ -1,11 +1,15 @@
 from contextlib import contextmanager
 from datetime import datetime, timedelta, timezone
+from email.header import Header
+from email.message import EmailMessage
+from email.utils import formataddr
 import json
 import os
 from fastapi import FastAPI, HTTPException, Query
 import psycopg2
 import psycopg2.pool
 from pydantic import BaseModel
+import smtplib
 import urllib.error
 import urllib.request
 import uuid
@@ -1060,3 +1064,54 @@ async def store_answer_division_remainder(child_id_obfuscated: str, question_id:
                 print(cur.statusmessage)
                 raise HTTPException(status_code=500, detail=str(e))
         return {"status": "success"}
+
+
+## Contact form (e-mail)
+
+smtp_host = os.getenv("SMTP_HOST", "smtp.strato.de")
+smtp_port = int(os.getenv("SMTP_PORT", "587"))
+smtp_user = _required_env("SMTP_USER")
+smtp_pass = _required_env("SMTP_PASSWORD")
+receiver_emails = [
+    receiver.strip()
+    for receiver in os.getenv("SMTP_RECIPIENTS", smtp_user).split(",")
+    if receiver.strip()
+]
+
+
+class Message(BaseModel):
+    sender_name: str
+    sender_email: str
+    content: str
+
+
+@subapi.post("/messages")
+async def send_message(message: Message):
+    '''Send e-mail from the imprint contact form'''
+    sender_name = message.sender_name.strip()
+    sender_email = message.sender_email.strip()
+    content = message.content.strip()
+    if not sender_name or not sender_email or not content:
+        raise HTTPException(status_code=400, detail="Please fill in all fields.")
+
+    email_message = EmailMessage()
+    email_message['From'] = formataddr(('Kontaktformular 1x1', smtp_user))
+    email_message['To'] = ', '.join(receiver_emails)
+    email_message['Reply-To'] = formataddr((sender_name, sender_email))
+    email_message['Subject'] = Header('Nachricht über Kontaktformular von 1x1.rempfer.eu', 'utf-8').encode()
+    email_message.set_content(
+        f'Nachricht über das Kontaktformular auf 1x1.rempfer.eu\n'
+        f'Von: {sender_name} <{sender_email}>\n'
+        f'\n'
+        f'{content}',
+        subtype='plain',
+        charset='utf-8'
+    )
+
+    with smtplib.SMTP(smtp_host, smtp_port, timeout=10) as smtp_client:
+        smtp_client.ehlo()
+        smtp_client.starttls()
+        smtp_client.ehlo()
+        smtp_client.login(smtp_user, smtp_pass)
+        smtp_client.send_message(email_message, from_addr=smtp_user, to_addrs=receiver_emails)
+    return {"status": "success"}
