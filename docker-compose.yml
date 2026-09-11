@@ -49,6 +49,9 @@ services:
       context: .
       dockerfile: frontend/Dockerfile
     restart: "no"
+    depends_on:
+      backend:
+        condition: service_healthy
     ports:
       - "${WEB_PORT:-7000}:80"
     healthcheck:
