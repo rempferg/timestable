@@ -1,0 +1,417 @@
+#!/bin/bash
+
+set -exo pipefail
+
+# Load nvm to get access to npm/node
+export NVM_DIR="$HOME/.nvm"
+[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+
+GIT_DIR="/home/georg/timestable.git"
+
+# Production deployment
+TARGET="/home/georg/timestable_deploy-folder"
+BACKUP_DIR="/home/georg/backups_timestable_pre-deployment"
+BRANCH="master"
+
+# Preview deployments
+PREVIEW_BASE="/home/georg/timestable_previews"
+PREVIEW_STATE="$PREVIEW_BASE/state"
+PREVIEW_NEXT_PORT="$PREVIEW_BASE/next_port"
+PREVIEW_LOCK="$PREVIEW_BASE/deploy.lock"
+
+PREVIEW_MIN_PORT=4000
+PREVIEW_MAX_PORT=4999
+
+export CI=true
+
+
+###############################################################################
+# Preview state handling
+###############################################################################
+
+mkdir -p "$PREVIEW_BASE"
+
+# Serialize preview allocation/deployment operations.
+exec 9>"$PREVIEW_LOCK"
+flock 9
+
+
+init_preview_state()
+{
+	if [ ! -f "$PREVIEW_NEXT_PORT" ]; then
+		echo "$PREVIEW_MIN_PORT" > "$PREVIEW_NEXT_PORT"
+	fi
+
+	if [ ! -f "$PREVIEW_STATE" ]; then
+		touch "$PREVIEW_STATE"
+	fi
+}
+
+
+# Return the port assigned to a branch, or nothing.
+get_preview_port()
+{
+	local branch="$1"
+
+	awk -v branch="$branch" '$1 == branch { print $2; exit }' \
+		"$PREVIEW_STATE"
+}
+
+
+# Return success if a port is currently allocated.
+port_in_use()
+{
+	local port="$1"
+
+	awk -v port="$port" '$2 == port { found=1; exit } END { exit !found }' \
+		"$PREVIEW_STATE"
+}
+
+
+# Allocate a new port for a branch.
+allocate_preview_port()
+{
+	local branch="$1"
+	local existing
+	local candidate
+	local start
+
+	existing="$(get_preview_port "$branch")"
+
+	if [ -n "$existing" ]; then
+		echo "$existing"
+		return
+	fi
+
+	candidate="$(cat "$PREVIEW_NEXT_PORT")"
+	start="$candidate"
+
+	while true
+	do
+		if ! port_in_use "$candidate"; then
+			# Assign this port to the branch.
+			echo "$branch $candidate" >> "$PREVIEW_STATE"
+
+			# Advance the allocation pointer, wrapping at MAX_PORT.
+			if [ "$candidate" -ge "$PREVIEW_MAX_PORT" ]; then
+				candidate="$PREVIEW_MIN_PORT"
+			else
+				candidate=$((candidate + 1))
+			fi
+
+			echo "$candidate" > "$PREVIEW_NEXT_PORT"
+
+			# Return the port we actually allocated.
+			if [ "$candidate" -eq "$PREVIEW_MIN_PORT" ]; then
+				echo "$PREVIEW_MAX_PORT"
+			else
+				echo $((candidate - 1))
+			fi
+
+			return
+		fi
+
+		if [ "$candidate" -ge "$PREVIEW_MAX_PORT" ]; then
+			candidate="$PREVIEW_MIN_PORT"
+		else
+			candidate=$((candidate + 1))
+		fi
+
+		if [ "$candidate" -eq "$start" ]; then
+			echo "ERROR: no preview ports available" >&2
+			return 1
+		fi
+	done
+}
+
+
+free_preview_port()
+{
+	local branch="$1"
+	local tmp
+
+	tmp="$(mktemp)"
+
+	awk -v branch="$branch" '$1 != branch' \
+		"$PREVIEW_STATE" > "$tmp"
+
+	mv "$tmp" "$PREVIEW_STATE"
+}
+
+
+# Convert a branch name to a safe directory / Compose project identifier.
+#
+# The branch itself is kept in the state file, but filenames and Compose
+# project names must not contain arbitrary Git branch syntax.
+preview_id()
+{
+	local branch="$1"
+
+	printf '%s' "$branch" |
+		sed 's#[^A-Za-z0-9_.-]#_#g'
+}
+
+
+###############################################################################
+# Preview deployment
+###############################################################################
+
+deploy_preview()
+{
+	local branch="$1"
+	local newrev="$2"
+
+	local id
+	local port
+	local target
+	local compose_project
+
+	id="$(preview_id "$branch")"
+	port="$(allocate_preview_port "$branch")"
+
+	target="$PREVIEW_BASE/$id"
+	compose_project="timestable-preview-$id"
+
+	echo "========================================"
+	echo "Preview deployment"
+	echo "Branch:  $branch"
+	echo "Commit:  $newrev"
+	echo "Port:    $port"
+	echo "Target:  $target"
+	echo "Project: $compose_project"
+	echo "========================================"
+
+	# Stop the existing preview for this branch.
+	#
+	# The subshell is important: $target is deleted below, so the main
+	# shell must never remain inside $target.
+	if [ -d "$target" ]; then
+		(
+			cd "$target"
+
+			WEB_PORT="$port" \
+				docker compose \
+				--env-file "$PREVIEW_BASE/preview.env" \
+				-p "$compose_project" \
+				down --remove-orphans || true
+		)
+	fi
+
+	# Make sure the main shell is not inside $target before deleting it.
+	cd "$HOME"
+
+	# Fresh checkout of exactly the pushed commit.
+	rm -rf "$target"
+	mkdir -p "$target"
+
+	git --work-tree="$target" \
+		--git-dir="$GIT_DIR" \
+		checkout -f "$newrev"
+
+	cd "$target"
+
+	echo "Starting preview on port $port..."
+
+	# If deployment fails, print useful diagnostics.
+	trap '
+		echo "========================================"
+		echo "PREVIEW DEPLOYMENT FAILED"
+		echo "Branch: '"$branch"'"
+		echo "Port:   '"$port"'"
+		echo "========================================"
+
+		WEB_PORT='"$port"' \
+			docker compose \
+			--env-file "$PREVIEW_BASE/preview.env" \
+			-p "'"$compose_project"'" \
+			ps || true
+
+		WEB_PORT='"$port"' \
+			docker compose \
+			--env-file "$PREVIEW_BASE/preview.env" \
+			-p "'"$compose_project"'" \
+			logs --tail=200 || true
+	' ERR
+
+	WEB_PORT="$port" \
+		docker compose \
+		--env-file "$PREVIEW_BASE/preview.env" \
+		-p "$compose_project" \
+		up -d --build --wait --wait-timeout 120
+
+	trap - ERR
+
+	echo "========================================"
+	echo "PREVIEW DEPLOYMENT SUCCESSFUL"
+	echo "Branch: $branch"
+	echo "Port:   $port"
+	echo "URL:    http://<server>:$port"
+	echo "========================================"
+}
+
+
+###############################################################################
+# Preview deletion
+###############################################################################
+
+delete_preview()
+{
+	local branch="$1"
+
+	local port
+	local id
+	local target
+	local compose_project
+
+	port="$(get_preview_port "$branch")"
+
+	if [ -z "$port" ]; then
+		echo "No preview registered for deleted branch $branch"
+		return
+	fi
+
+	id="$(preview_id "$branch")"
+	target="$PREVIEW_BASE/$id"
+	compose_project="timestable-preview-$id"
+
+	echo "========================================"
+	echo "Deleting preview"
+	echo "Branch:  $branch"
+	echo "Port:    $port"
+	echo "Target:  $target"
+	echo "Project: $compose_project"
+	echo "========================================"
+
+	# Use a subshell so the main shell does not remain inside $target,
+	# because the directory is deleted immediately afterwards.
+	if [ -d "$target" ]; then
+		(
+			cd "$target"
+
+			WEB_PORT="$port" \
+				docker compose \
+				--env-file "$PREVIEW_BASE/preview.env" \
+				-p "$compose_project" \
+				down --remove-orphans || true
+		)
+	fi
+
+	cd "$HOME"
+
+	rm -rf "$target"
+
+	free_preview_port "$branch"
+
+	echo "Preview for $branch removed."
+}
+
+
+###############################################################################
+# Initialize state
+###############################################################################
+
+init_preview_state
+
+
+###############################################################################
+# Process received refs
+###############################################################################
+
+while read oldrev newrev ref
+do
+	echo "Received ref: $ref"
+
+	############################################################################
+	# Production deployment
+	############################################################################
+
+	if [ "$ref" = "refs/heads/$BRANCH" ];
+	then
+		echo "Ref $ref received. Deploying ${BRANCH} branch to production..."
+
+		rm -rf "$TARGET"
+		mkdir -p "$TARGET"
+
+		# Build
+		git --work-tree="$TARGET" --git-dir="$GIT_DIR" checkout -f "$BRANCH"
+
+		cd "$TARGET/frontend"
+		npm install
+		ng build
+
+		git_commit_id=`git --git-dir="$GIT_DIR" rev-parse --short HEAD`
+		version_json="{ \"version\": \"$git_commit_id\" }"
+		echo $version_json > dist/1x1/browser/version.json
+
+		cd ..
+		echo $version_json > backend/version.json
+
+		# Backup currently deployed version
+		cd ~
+		mkdir -p "$BACKUP_DIR"
+		cd "$BACKUP_DIR"
+
+		ssh -4 -p 4443 root@project-g.de \
+			sudo systemctl stop timestable-fastapi
+
+		ssh -4 -p 4443 root@project-g.de \
+			sudo -u postgres pg_dump -d timestable \
+			-f /var/www/timestable/db/timestable.sql
+
+		rdiff-backup \
+			--api-version 201 \
+			--remote-schema \
+			'ssh -4 -p 4443 %s rdiff-backup --api-version 201 server' \
+			backup \
+			root@project-g.de::/var/www/timestable/ \
+			"$BACKUP_DIR"
+
+		# Deploy
+		cd "$TARGET"
+
+		ssh -4 -p 4443 root@project-g.de \
+			sudo -u postgres psql -d timestable -q \
+			< "$TARGET/db/migrate.sql"
+
+		ssh -4 -p 4443 root@project-g.de \
+			rm -rf /var/www/timestable/backend
+
+		ssh -4 -p 4443 root@project-g.de \
+			rm -rf /var/www/timestable/frontend
+
+		scp -4 -rP 4443 \
+			./backend/* \
+			root@project-g.de:/var/www/timestable/backend/
+
+		scp -4 -rP 4443 \
+			./frontend/dist/1x1/browser/* \
+			root@project-g.de:/var/www/timestable/frontend/
+
+		ssh -4 -p 4443 root@project-g.de \
+			sudo chmod a+x /var/www/timestable/frontend
+
+		ssh -4 -p 4443 root@project-g.de \
+			sudo systemctl start timestable-fastapi
+
+	############################################################################
+	# Preview deletion
+	############################################################################
+
+	elif [[ "$ref" == refs/heads/preview/* ]] &&
+	      [ "$newrev" = "0000000000000000000000000000000000000000" ];
+	then
+		delete_preview "${ref#refs/heads/}"
+
+	############################################################################
+	# Preview deployment
+	############################################################################
+
+	elif [[ "$ref" == refs/heads/preview/* ]];
+	then
+		deploy_preview "${ref#refs/heads/}" "$newrev"
+
+	else
+		echo "Ref $ref received. Doing nothing."
+
+	fi
+done
