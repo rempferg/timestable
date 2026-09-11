@@ -18,6 +18,23 @@
         class="module-card"
         [class.is-disabled]="loadState() !== 'ready'"
         [attr.aria-disabled]="loadState() !== 'ready'"
+        [href]="mathAttackUrl()"
+        target="_blank"
+        rel="noopener noreferrer"
+        aria-label="Math Attack öffnen"
+      >
+        <div class="module-preview" aria-hidden="true">
+          <img class="module-image" src="/math_attack.jpg" alt="" />
+        </div>
+        <div class="module-meta">
+          <span class="module-title">Math Attack</span>
+          <span class="module-description">Magnus Rechenspiel</span>
+        </div>
+      </a>
+      <a
+        class="module-card"
+        [class.is-disabled]="loadState() !== 'ready'"
+        [attr.aria-disabled]="loadState() !== 'ready'"
         [routerLink]="['/timestable']"
         [queryParams]="{ id: childIdObfuscated() }"
         aria-label="1x1-Modul öffnen"
@@ -138,24 +155,12 @@
           <span class="module-description">Wörter lesen und schreiben</span>
         </div>
       </a>
-
-      <a
-        class="module-card"
-        [class.is-disabled]="loadState() !== 'ready'"
-        [attr.aria-disabled]="loadState() !== 'ready'"
-        [href]="mathAttackUrl()"
-        target="_blank"
-        rel="noopener noreferrer"
-        aria-label="Math Attack öffnen"
-      >
-        <div class="module-preview" aria-hidden="true">
-          <img class="module-image" src="/math_attack.jpg" alt="" />
-        </div>
-        <div class="module-meta">
-          <span class="module-title">Math Attack</span>
-          <span class="module-description">Magnus Rechenspiel</span>
-        </div>
-      </a>
     </section>
+
+    <footer class="home-footer">
+      <a [routerLink]="['/impressum']" queryParamsHandling="preserve">Impressum</a>
+      <span class="footer-separator" aria-hidden="true">·</span>
+      <a [routerLink]="['/datenschutzerklaerung']" queryParamsHandling="preserve">Datenschutzerklärung</a>
+    </footer>
   </div>
 </main>

@@ -14,6 +14,7 @@
     radial-gradient(circle at 20% 40%, rgba(0, 128, 255, 0.18), transparent 40%),
     linear-gradient(135deg, #f6f2ed 0%, #eef3f0 50%, #f1f0f6 100%);
   color: #1d1d1f;
+  font-family: "Space Grotesk", "Avenir Next", "Segoe UI", sans-serif;
 }
 
 .home-content {
@@ -165,6 +166,31 @@
   width: 100%;
   height: 100%;
   object-fit: cover;
+}
+
+.home-footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 10px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(10, 10, 10, 0.08);
+  font-size: 0.85rem;
+  color: rgba(20, 20, 20, 0.55);
+}
+
+.home-footer a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.home-footer a:hover,
+.home-footer a:focus-visible {
+  text-decoration: underline;
+}
+
+.footer-separator {
+  opacity: 0.7;
 }
 
 @media (max-width: 600px) {
