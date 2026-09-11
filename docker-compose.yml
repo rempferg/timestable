@@ -30,7 +30,12 @@ services:
       TIMESTABLE_DB_PASSWORD: timestable-internal-password
       TIMESTABLE_DB_PORT: 5432
       TIMESTABLE_DB_OPTIONS: -c timezone=UTC
-      OPENCODE_ZEN_API_KEY: your-opencode-zen-api-key
+      OPENCODE_ZEN_API_KEY: ${OPENCODE_ZEN_API_KEY}
+      SMTP_HOST: ${SMTP_HOST}
+      SMTP_PORT: ${SMTP_PORT}
+      SMTP_USER: ${SMTP_USER}
+      SMTP_PASSWORD: ${SMTP_PASSWORD}
+      SMTP_RECIPIENTS: ${SMTP_RECIPIENTS}
     healthcheck:
       test:
         [
@@ -60,4 +65,3 @@ services:
       timeout: 2s
       retries: 15
       start_period: 2s
-      
