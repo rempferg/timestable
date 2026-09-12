@@ -58,7 +58,7 @@ services:
       backend:
         condition: service_healthy
     ports:
-      - "${WEB_PORT:-7000}:80"
+      - "127.0.0.1:${WEB_PORT:-7000}:80"
     healthcheck:
       test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1/ || exit 1"]
       interval: 2s
