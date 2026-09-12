@@ -168,6 +168,7 @@ deploy_preview()
 
 	id="$(preview_id "$branch")"
 	port="$(allocate_preview_port "$branch")"
+	preview_host_id=$((port - 4000))
 
 	target="$PREVIEW_BASE/$id"
 	compose_project="timestable-preview-$id"
@@ -177,6 +178,7 @@ deploy_preview()
 	echo "Branch:  $branch"
 	echo "Commit:  $newrev"
 	echo "Port:    $port"
+	printf "URL:     https://%03d.team-a.net\n" "$preview_host_id"
 	echo "Target:  $target"
 	echo "Project: $compose_project"
 	echo "========================================"
@@ -245,7 +247,7 @@ deploy_preview()
 	echo "PREVIEW DEPLOYMENT SUCCESSFUL"
 	echo "Branch: $branch"
 	echo "Port:   $port"
-	echo "URL:    http://<server>:$port"
+	printf "URL:    https://%03d.team-a.net\n" $preview_host_id
 	echo "========================================"
 }
 
