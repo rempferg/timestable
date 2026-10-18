@@ -4,13 +4,14 @@ import {
   OnDestroy,
   OnInit,
   computed,
+  inject,
   input,
   signal
 } from '@angular/core';
 
+import { AlphabetProgressService } from '../alphabet-progress.service';
 import { API_BASE_URL } from '../api.config';
 import {
-  AlphabetAnswer,
   BASE_LETTERS,
   TARGET_LETTERS,
   baseIndex,
@@ -81,10 +82,9 @@ export class AlphabetGameComponent implements OnInit, OnDestroy {
     return `${this.target()} – ${Math.abs(offset)} ${direction}`;
   });
 
+  private readonly progressService = inject(AlphabetProgressService);
   private displayedAtMs = 0;
   private audioContext: AudioContext | null = null;
-  private baselineAnswers: AlphabetAnswer[] = [];
-  private readonly sessionAnswers: AlphabetAnswer[] = [];
   private questionIndex = 0;
   private readonly lastAskedAt = new Map<string, number>();
 
@@ -95,7 +95,10 @@ export class AlphabetGameComponent implements OnInit, OnDestroy {
       this.phase.set('answered');
       return;
     }
-    void this.loadAnswers();
+    const childId = this.childIdObfuscated();
+    if (childId) {
+      this.progressService.ensureLoaded(childId);
+    }
     this.startRound();
   }
 
@@ -160,7 +163,7 @@ export class AlphabetGameComponent implements OnInit, OnDestroy {
     this.phase.set('answered');
     const offset = index - this.correctIndex();
     const timeToClickMs = Math.max(0, Math.round(nowMs() - this.displayedAtMs));
-    this.sessionAnswers.push({
+    this.progressService.recordAnswer({
       asked_letter: this.target(),
       clicked_offset: offset,
       answered_at: new Date().toISOString()
@@ -175,7 +178,7 @@ export class AlphabetGameComponent implements OnInit, OnDestroy {
   // child is, drops to zero right after a letter is asked, and recovers over the
   // next few questions.
   private pickTarget(): string {
-    const badness = computeBadness([...this.baselineAnswers, ...this.sessionAnswers]);
+    const badness = computeBadness(this.progressService.answers());
     const weights = TARGET_LETTERS.map((letter) => {
       const letterBadness = Math.max(badness.get(letter) ?? UNSEEN_BADNESS, BADNESS_FLOOR);
       return Math.pow(letterBadness, FOCUS_EXPONENT) * this.cooldown(letter);
@@ -209,22 +212,6 @@ export class AlphabetGameComponent implements OnInit, OnDestroy {
       return 0;
     }
     return (gap - MIN_GAP + 1) / (RAMP_END - MIN_GAP + 1);
-  }
-
-  private async loadAnswers(): Promise<void> {
-    const childId = this.childIdObfuscated();
-    if (!childId) {
-      return;
-    }
-    try {
-      const response = await fetch(`${API_BASE_URL}/alphabet/progress/${childId}`);
-      if (!response.ok) {
-        throw new Error(`Failed to load alphabet progress: ${response.status}`);
-      }
-      this.baselineAnswers = (await response.json()) as AlphabetAnswer[];
-    } catch (error) {
-      console.error('Failed to load alphabet progress', error);
-    }
   }
 
   // A short two-note chime, synthesized so no audio file has to be shipped.

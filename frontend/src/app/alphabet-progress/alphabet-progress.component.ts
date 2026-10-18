@@ -1,13 +1,7 @@
-import { ChangeDetectionStrategy, Component, OnInit, computed, input, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, effect, inject, input } from '@angular/core';
 
-import { API_BASE_URL } from '../api.config';
-import {
-  AlphabetAnswer,
-  COLUMN_LETTERS,
-  TILE_COUNT,
-  baseIndex,
-  computeOffsetWeights
-} from '../alphabet-scoring';
+import { AlphabetProgressService } from '../alphabet-progress.service';
+import { COLUMN_LETTERS, TILE_COUNT, baseIndex, computeOffsetWeights } from '../alphabet-scoring';
 
 type Box = {
   offset: number;
@@ -25,47 +19,31 @@ type Box = {
     '[class.is-preview]': 'preview()'
   }
 })
-export class AlphabetProgressComponent implements OnInit {
+export class AlphabetProgressComponent {
   readonly childIdObfuscated = input<string | null>(null);
   readonly preview = input(false);
 
-  readonly letters = COLUMN_LETTERS;
-  readonly loadState = signal<'loading' | 'ready' | 'error'>('loading');
+  private readonly progressService = inject(AlphabetProgressService);
 
-  private readonly weights = signal<Map<string, Map<number, number>>>(new Map());
+  readonly letters = COLUMN_LETTERS;
+  readonly loadState = this.progressService.loadState;
 
   // One column per answered letter, each with 26 boxes ordered by offset from
   // the most negative at the top to the largest at the bottom. The range comes
   // from the letter's base letter, so the correct box (offset 0) sits at the
   // same height for 'A' and 'Ä', for 'O' and 'Ö', and so on.
   readonly columns = computed<Box[][]>(() => {
-    const weights = this.weights();
+    const weights = computeOffsetWeights(this.progressService.answers());
     return COLUMN_LETTERS.map((letter) => this.buildColumn(letter, weights.get(letter)));
   });
 
-  ngOnInit(): void {
-    void this.load();
-  }
-
-  private async load(): Promise<void> {
-    const childId = this.childIdObfuscated();
-    if (!childId) {
-      this.loadState.set('ready');
-      return;
-    }
-
-    try {
-      const response = await fetch(`${API_BASE_URL}/alphabet/progress/${childId}`);
-      if (!response.ok) {
-        throw new Error(`Failed to load alphabet progress: ${response.status}`);
+  constructor() {
+    effect(() => {
+      const childId = this.childIdObfuscated();
+      if (childId) {
+        this.progressService.ensureLoaded(childId);
       }
-      const answers = (await response.json()) as AlphabetAnswer[];
-      this.weights.set(computeOffsetWeights(answers));
-      this.loadState.set('ready');
-    } catch (error) {
-      console.error('Failed to load alphabet progress', error);
-      this.loadState.set('error');
-    }
+    });
   }
 
   private buildColumn(letter: string, byOffset?: Map<number, number>): Box[] {
