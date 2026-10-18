@@ -1114,6 +1114,45 @@ async def store_alphabet_answer(payload: AlphabetAnswerPayload):
     return {"status": "success"}
 
 
+@subapi.get('/alphabet/progress/{child_id_obfuscated}')
+async def get_alphabet_progress(child_id_obfuscated: str):
+    '''Get the alphabet answers needed for the progress plot.
+
+    The last 20 answers per asked letter, at most a week old, newest last.
+    '''
+    child_id_transparent = deobfuscate_id(child_id_obfuscated)
+    try:
+        with db_cursor() as cur:
+            cur.execute(
+                '''
+                SELECT
+                    asked_letter,
+                    clicked_offset,
+                    to_char(answered_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"')
+                FROM (
+                    SELECT
+                        asked_letter, clicked_offset, answered_at,
+                        ROW_NUMBER() OVER (
+                            PARTITION BY child_id_transparent, asked_letter
+                            ORDER BY answered_at DESC
+                        ) AS rn
+                    FROM answers_alphabet
+                    WHERE child_id_transparent = %s
+                      AND answered_at >= now() - interval '7 days'
+                ) t
+                WHERE rn <= 20
+                ORDER BY asked_letter, answered_at
+                ''',
+                (child_id_transparent,)
+            )
+            return [
+                {'asked_letter': letter, 'clicked_offset': offset, 'answered_at': answered_at}
+                for letter, offset, answered_at in cur.fetchall()
+            ]
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 ## Contact form (e-mail)
 
 class Message(BaseModel):

@@ -1,0 +1,33 @@
+@if (loadState() === 'error') {
+  <p class="status">Fortschritt konnte nicht geladen werden.</p>
+} @else {
+  <div
+    class="plot"
+    [class.is-preview]="preview()"
+    role="img"
+    aria-label="Fortschritt: je Buchstabe die letzten Antworten nach Abstand zum richtigen Buchstaben"
+  >
+    @if (!preview()) {
+      <div class="y-title" aria-hidden="true">Abstand</div>
+    }
+    <div class="grid">
+      @for (letter of letters; track letter; let li = $index) {
+        @for (box of columns()[li]; track box.offset) {
+          <div class="box" [class]="boxClass(box)" [style.opacity]="box.weight">
+            @if (!preview()) {
+              <span class="num">{{ box.offset }}</span>
+            }
+          </div>
+        }
+      }
+    </div>
+    @if (!preview()) {
+      <div class="x-axis" aria-hidden="true">
+        @for (letter of letters; track letter) {
+          <span>{{ letter }}</span>
+        }
+      </div>
+      <div class="x-title" aria-hidden="true">Buchstabe</div>
+    }
+  </div>
+}

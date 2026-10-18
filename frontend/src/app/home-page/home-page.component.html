@@ -165,7 +165,10 @@
         aria-label="Alphabet öffnen"
       >
         <div class="module-preview" aria-hidden="true">
-          <app-alphabet-game [preview]="true" />
+          <app-alphabet-progress
+            [childIdObfuscated]="childIdObfuscated()"
+            [preview]="true"
+          />
         </div>
         <div class="module-meta">
           <span class="module-title">Alphabet</span>

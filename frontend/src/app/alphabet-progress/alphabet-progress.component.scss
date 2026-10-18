@@ -1,0 +1,112 @@
+:host {
+  display: block;
+}
+
+.plot {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-rows: auto auto auto;
+  column-gap: 8px;
+  row-gap: 6px;
+  align-items: start;
+}
+
+.y-title {
+  grid-column: 1;
+  grid-row: 1;
+  align-self: center;
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  font: 500 11px/1 "Space Grotesk", "Avenir Next", "Segoe UI", sans-serif;
+  color: rgba(20, 20, 20, 0.55);
+}
+
+.grid {
+  grid-column: 2;
+  grid-row: 1;
+  display: grid;
+  grid-template-rows: repeat(26, 18px);
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  gap: 1px;
+}
+
+.box {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border-radius: 2px;
+  font: 500 10px/1 "Space Grotesk", "Avenir Next", "Segoe UI", sans-serif;
+}
+
+.box.is-hit {
+  background: rgb(63, 166, 101);
+  color: #fff;
+}
+
+.box.is-near {
+  background: hsl(142 42% 72%);
+  color: #16351f;
+}
+
+.box.is-far {
+  background: rgb(255, 208, 90);
+  color: #4a3a10;
+}
+
+.box.is-past {
+  background: hsl(4 55% 55%);
+  color: #fff;
+}
+
+.num {
+  position: relative;
+  z-index: 1;
+}
+
+.x-axis {
+  grid-column: 2;
+  grid-row: 2;
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  gap: 1px;
+  font: 500 10px/1 "Space Grotesk", "Avenir Next", "Segoe UI", sans-serif;
+  color: rgba(20, 20, 20, 0.6);
+  text-align: center;
+}
+
+.x-title {
+  grid-column: 2;
+  grid-row: 3;
+  font: 500 11px/1 "Space Grotesk", "Avenir Next", "Segoe UI", sans-serif;
+  color: rgba(20, 20, 20, 0.55);
+  text-align: center;
+}
+
+.status {
+  margin: 0;
+  font: 500 0.9rem/1.4 "Space Grotesk", "Avenir Next", "Segoe UI", sans-serif;
+  color: rgba(20, 20, 20, 0.65);
+}
+
+:host(.is-preview) {
+  height: 100%;
+}
+
+.plot.is-preview {
+  display: block;
+  height: 100%;
+}
+
+.plot.is-preview .grid {
+  height: 100%;
+  grid-template-rows: repeat(26, minmax(0, 1fr));
+  gap: 1px;
+}
+
+.plot.is-preview .box {
+  border-radius: 1px;
+}

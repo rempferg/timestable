@@ -1,4 +1,4 @@
-<div class="menubar" [class.single-button]="!showVisibilityToggle">
+<div class="menubar" [class.single-button]="singleButton">
   <a
     class="action-button home-button"
     [routerLink]="['/']"
@@ -8,6 +8,17 @@
     <span class="action-icon material-icons" aria-hidden="true">home</span>
     <span class="sr-only">Home</span>
   </a>
+  @if (showProgressToggle) {
+    <button
+      type="button"
+      class="action-button progress-toggle"
+      (click)="onToggleProgress()"
+      aria-label="Fortschritt"
+    >
+      <span class="action-icon material-icons" aria-hidden="true">bar_chart</span>
+      <span class="sr-only">Fortschritt</span>
+    </button>
+  }
   @if (showVisibilityToggle) {
     <button
       type="button"

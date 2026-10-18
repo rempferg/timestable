@@ -1,5 +1,9 @@
 <main class="page">
-  <app-learning-menubar [showVisibilityToggle]="false" />
+  <app-learning-menubar
+    [showVisibilityToggle]="false"
+    [showProgressToggle]="true"
+    (progressToggle)="openProgress()"
+  />
   <div class="page-body">
     @if (loadState() === 'loading') {
       <p class="status">Lädt...</p>
@@ -10,4 +14,38 @@
       <app-alphabet-game [childIdObfuscated]="childIdObfuscated()" />
     }
   </div>
+
+  @if (progressOpen()) {
+    <div class="progress-overlay" (click)="onOverlayClick($event)">
+      <section
+        class="progress-panel"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="progress-title"
+      >
+        <header class="progress-header">
+          <h2 id="progress-title">Fortschritt</h2>
+          <button
+            #progressCloseButton
+            type="button"
+            class="progress-close"
+            (click)="closeProgress()"
+            aria-label="Schließen"
+          >
+            <span class="material-icons" aria-hidden="true">close</span>
+          </button>
+        </header>
+        <app-alphabet-progress
+          class="progress-plot"
+          [childIdObfuscated]="childIdObfuscated()"
+        />
+        <div class="progress-legend">
+          <span><i class="swatch is-hit"></i>richtig</span>
+          <span><i class="swatch is-near"></i>1 daneben</span>
+          <span><i class="swatch is-far"></i>2 daneben</span>
+          <span><i class="swatch is-past"></i>weiter weg</span>
+        </div>
+      </section>
+    </div>
+  }
 </main>
