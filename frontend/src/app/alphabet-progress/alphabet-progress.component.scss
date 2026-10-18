@@ -36,29 +36,52 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  box-sizing: border-box;
   overflow: hidden;
+  border: 1px solid transparent;
   border-radius: 2px;
   font: 500 10px/1 "Space Grotesk", "Avenir Next", "Segoe UI", sans-serif;
 }
 
+/* The correct box keeps a dark green frame even when its weight makes it
+   otherwise invisible, so the answer diagonal is always readable. */
 .box.is-hit {
-  background: rgb(63, 166, 101);
+  border-color: hsl(142 48% 28%);
   color: #fff;
 }
 
 .box.is-near {
-  background: hsl(142 42% 72%);
   color: #16351f;
 }
 
 .box.is-far {
-  background: rgb(255, 208, 90);
   color: #4a3a10;
 }
 
 .box.is-past {
-  background: hsl(4 55% 55%);
   color: #fff;
+}
+
+.fill {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+}
+
+.box.is-hit .fill {
+  background: rgb(63, 166, 101);
+}
+
+.box.is-near .fill {
+  background: hsl(142 42% 72%);
+}
+
+.box.is-far .fill {
+  background: rgb(255, 208, 90);
+}
+
+.box.is-past .fill {
+  background: hsl(4 55% 55%);
 }
 
 .num {
