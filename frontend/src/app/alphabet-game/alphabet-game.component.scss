@@ -54,8 +54,8 @@
   transition: background-color 0.15s ease, border-color 0.15s ease;
 }
 
-.tile:not(:disabled):hover,
-.tile:not(:disabled):focus-visible {
+.letter-row:not(.is-answered) .tile:not(:disabled):hover,
+.letter-row:not(.is-answered) .tile:not(:disabled):focus-visible {
   border-color: rgba(29, 29, 31, 0.6);
   background: #fff;
 }

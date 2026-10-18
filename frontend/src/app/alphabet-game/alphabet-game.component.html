@@ -2,7 +2,7 @@
   <div class="target" aria-hidden="true">{{ target() }}</div>
   <p class="sr-only" aria-live="polite">{{ announcement() }}</p>
 
-  <div class="letter-row" role="group" aria-label="Buchstaben">
+  <div class="letter-row" [class.is-answered]="phase() === 'answered'" role="group" aria-label="Buchstaben">
     @for (letter of letters; track letter; let i = $index) {
       <button
         type="button"
