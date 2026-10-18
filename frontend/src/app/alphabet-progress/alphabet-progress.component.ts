@@ -1,33 +1,13 @@
 import { ChangeDetectionStrategy, Component, OnInit, computed, input, signal } from '@angular/core';
 
 import { API_BASE_URL } from '../api.config';
-
-const BASE_LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
-
-// The x axis: every base letter followed directly by the umlauts and the sharp
-// s that are answered through it. A column's vertical layout follows its base
-// letter, so offset 0 sits at the same height as for that letter.
-const COLUMN_LETTERS = [
-  'A', 'Ä', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N',
-  'O', 'Ö', 'P', 'Q', 'R', 'S', 'ß', 'T', 'U', 'Ü', 'V', 'W', 'X', 'Y', 'Z'
-];
-
-const BASE_LETTER_BY_TARGET: Record<string, string> = {
-  'Ä': 'A',
-  'Ö': 'O',
-  'Ü': 'U',
-  'ß': 'S'
-};
-
-const TILE_COUNT = BASE_LETTERS.length;
-const HALF_LIFE_DAYS = 1.5;
-const ONE_DAY_MS = 24 * 60 * 60 * 1000;
-
-type Answer = {
-  asked_letter: string;
-  clicked_offset: number;
-  answered_at: string;
-};
+import {
+  AlphabetAnswer,
+  COLUMN_LETTERS,
+  TILE_COUNT,
+  baseIndex,
+  computeOffsetWeights
+} from '../alphabet-scoring';
 
 type Box = {
   offset: number;
@@ -79,43 +59,13 @@ export class AlphabetProgressComponent implements OnInit {
       if (!response.ok) {
         throw new Error(`Failed to load alphabet progress: ${response.status}`);
       }
-      const answers = (await response.json()) as Answer[];
-      this.weights.set(this.computeWeights(answers));
+      const answers = (await response.json()) as AlphabetAnswer[];
+      this.weights.set(computeOffsetWeights(answers));
       this.loadState.set('ready');
     } catch (error) {
       console.error('Failed to load alphabet progress', error);
       this.loadState.set('error');
     }
-  }
-
-  // Exponential decay with a 1.5 day half life, normalized per asked letter so
-  // that a letter's boxes together carry a weight of 1.
-  private computeWeights(answers: Answer[]): Map<string, Map<number, number>> {
-    const now = Date.now();
-    const decayed = new Map<string, Map<number, number>>();
-    const totals = new Map<string, number>();
-
-    for (const answer of answers) {
-      const ageDays = Math.max(0, (now - Date.parse(answer.answered_at)) / ONE_DAY_MS);
-      const weight = Math.pow(0.5, ageDays / HALF_LIFE_DAYS);
-      const byOffset = decayed.get(answer.asked_letter) ?? new Map<number, number>();
-      byOffset.set(answer.clicked_offset, (byOffset.get(answer.clicked_offset) ?? 0) + weight);
-      decayed.set(answer.asked_letter, byOffset);
-      totals.set(answer.asked_letter, (totals.get(answer.asked_letter) ?? 0) + weight);
-    }
-
-    const normalized = new Map<string, Map<number, number>>();
-    for (const [letter, byOffset] of decayed) {
-      const total = totals.get(letter) ?? 0;
-      const out = new Map<number, number>();
-      if (total > 0) {
-        for (const [offset, weight] of byOffset) {
-          out.set(offset, Math.min(1, weight / total));
-        }
-      }
-      normalized.set(letter, out);
-    }
-    return normalized;
   }
 
   private buildColumn(letter: string, byOffset?: Map<number, number>): Box[] {
@@ -144,9 +94,4 @@ export class AlphabetProgressComponent implements OnInit {
     }
     return 'is-past';
   }
-}
-
-function baseIndex(letter: string): number {
-  const baseLetter = BASE_LETTER_BY_TARGET[letter] ?? letter;
-  return BASE_LETTERS.indexOf(baseLetter);
 }

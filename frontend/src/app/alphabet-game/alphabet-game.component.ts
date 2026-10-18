@@ -9,19 +9,21 @@ import {
 } from '@angular/core';
 
 import { API_BASE_URL } from '../api.config';
+import {
+  AlphabetAnswer,
+  BASE_LETTERS,
+  TARGET_LETTERS,
+  baseIndex,
+  computeBadness
+} from '../alphabet-scoring';
 
-const BASE_LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
-
-// The row only shows the 26 base letters. Umlauts and the sharp s are practiced
-// through their base tile (a German dictionary ordering) but shown as themselves.
-const TARGET_LETTERS = [...BASE_LETTERS, 'Ä', 'Ö', 'Ü', 'ß'];
-
-const BASE_LETTER_BY_TARGET: Record<string, string> = {
-  'Ä': 'A',
-  'Ö': 'O',
-  'Ü': 'U',
-  'ß': 'S'
-};
+// Letter picking: chance is proportional to how wrong the child is, softened so
+// it stays varied.
+const UNSEEN_BADNESS = 0.6; // letters with no recent data still get explored
+const BADNESS_FLOOR = 0.08; // mastered letters keep a small chance to show up
+const FOCUS_EXPONENT = 1.5; // >1 leans further towards the weakest letters
+const MIN_GAP = 3; // a letter cannot return within this many questions
+const RAMP_END = 8; // and is fully eligible again after this many
 
 type Phase = 'asking' | 'answered';
 
@@ -81,6 +83,10 @@ export class AlphabetGameComponent implements OnInit, OnDestroy {
 
   private displayedAtMs = 0;
   private audioContext: AudioContext | null = null;
+  private baselineAnswers: AlphabetAnswer[] = [];
+  private readonly sessionAnswers: AlphabetAnswer[] = [];
+  private questionIndex = 0;
+  private readonly lastAskedAt = new Map<string, number>();
 
   ngOnInit(): void {
     if (this.preview()) {
@@ -89,6 +95,7 @@ export class AlphabetGameComponent implements OnInit, OnDestroy {
       this.phase.set('answered');
       return;
     }
+    void this.loadAnswers();
     this.startRound();
   }
 
@@ -98,7 +105,10 @@ export class AlphabetGameComponent implements OnInit, OnDestroy {
   }
 
   startRound(): void {
-    this.target.set(this.pickTarget());
+    this.questionIndex += 1;
+    const letter = this.pickTarget();
+    this.lastAskedAt.set(letter, this.questionIndex);
+    this.target.set(letter);
     this.clickedIndex.set(null);
     this.phase.set('asking');
     this.displayedAtMs = nowMs();
@@ -150,10 +160,71 @@ export class AlphabetGameComponent implements OnInit, OnDestroy {
     this.phase.set('answered');
     const offset = index - this.correctIndex();
     const timeToClickMs = Math.max(0, Math.round(nowMs() - this.displayedAtMs));
+    this.sessionAnswers.push({
+      asked_letter: this.target(),
+      clicked_offset: offset,
+      answered_at: new Date().toISOString()
+    });
     if (offset === 0) {
       this.playHitSound();
     }
     void this.storeAnswer(this.target(), offset, timeToClickMs);
+  }
+
+  // Weighted random over the asked letters: chance grows with how wrong the
+  // child is, drops to zero right after a letter is asked, and recovers over the
+  // next few questions.
+  private pickTarget(): string {
+    const badness = computeBadness([...this.baselineAnswers, ...this.sessionAnswers]);
+    const weights = TARGET_LETTERS.map((letter) => {
+      const letterBadness = Math.max(badness.get(letter) ?? UNSEEN_BADNESS, BADNESS_FLOOR);
+      return Math.pow(letterBadness, FOCUS_EXPONENT) * this.cooldown(letter);
+    });
+
+    const total = weights.reduce((sum, weight) => sum + weight, 0);
+    if (total <= 0) {
+      return TARGET_LETTERS[Math.floor(Math.random() * TARGET_LETTERS.length)];
+    }
+
+    let roll = Math.random() * total;
+    for (let i = 0; i < TARGET_LETTERS.length; i++) {
+      roll -= weights[i];
+      if (roll <= 0) {
+        return TARGET_LETTERS[i];
+      }
+    }
+    return TARGET_LETTERS[TARGET_LETTERS.length - 1];
+  }
+
+  private cooldown(letter: string): number {
+    const lastAsked = this.lastAskedAt.get(letter);
+    if (lastAsked === undefined) {
+      return 1;
+    }
+    const gap = this.questionIndex - lastAsked;
+    if (gap >= RAMP_END) {
+      return 1;
+    }
+    if (gap < MIN_GAP) {
+      return 0;
+    }
+    return (gap - MIN_GAP + 1) / (RAMP_END - MIN_GAP + 1);
+  }
+
+  private async loadAnswers(): Promise<void> {
+    const childId = this.childIdObfuscated();
+    if (!childId) {
+      return;
+    }
+    try {
+      const response = await fetch(`${API_BASE_URL}/alphabet/progress/${childId}`);
+      if (!response.ok) {
+        throw new Error(`Failed to load alphabet progress: ${response.status}`);
+      }
+      this.baselineAnswers = (await response.json()) as AlphabetAnswer[];
+    } catch (error) {
+      console.error('Failed to load alphabet progress', error);
+    }
   }
 
   // A short two-note chime, synthesized so no audio file has to be shipped.
@@ -218,17 +289,6 @@ export class AlphabetGameComponent implements OnInit, OnDestroy {
       console.error('Failed to store alphabet answer', error);
     }
   }
-
-  private pickTarget(): string {
-    const previous = this.target();
-    const candidates = TARGET_LETTERS.filter((letter) => letter !== previous);
-    return candidates[Math.floor(Math.random() * candidates.length)];
-  }
-}
-
-function baseIndex(targetLetter: string): number {
-  const baseLetter = BASE_LETTER_BY_TARGET[targetLetter] ?? targetLetter;
-  return BASE_LETTERS.indexOf(baseLetter);
 }
 
 function nowMs(): number {
