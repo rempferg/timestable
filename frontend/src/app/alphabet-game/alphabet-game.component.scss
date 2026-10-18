@@ -40,6 +40,7 @@
   margin: 0;
   padding: 0;
   aspect-ratio: 1 / 1.55;
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -67,6 +68,54 @@
   background: rgb(63, 166, 101);
   border-color: transparent;
   color: #fff;
+}
+
+.tile.is-hit {
+  animation: tile-pop 0.5s ease-out;
+}
+
+.star {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  margin: -8px 0 0 -7px;
+  font-size: 14px;
+  line-height: 1;
+  color: rgb(255, 200, 60);
+  pointer-events: none;
+  opacity: 0;
+  animation: star-fly 0.9s ease-out forwards;
+}
+
+.star:nth-child(1) { --tx: 26px; --ty: -6px; }
+.star:nth-child(2) { --tx: 13px; --ty: -28px; }
+.star:nth-child(3) { --tx: -13px; --ty: -28px; }
+.star:nth-child(4) { --tx: -26px; --ty: -6px; }
+.star:nth-child(5) { --tx: 13px; --ty: 16px; }
+.star:nth-child(6) { --tx: -13px; --ty: 16px; }
+
+@keyframes tile-pop {
+  0% { transform: scale(1); }
+  40% { transform: scale(1.22); }
+  70% { transform: scale(0.98); }
+  100% { transform: scale(1); }
+}
+
+@keyframes star-fly {
+  0% { opacity: 0; transform: translate(0, 0) scale(0.4) rotate(0deg); }
+  25% { opacity: 1; transform: translate(calc(var(--tx) * 0.3), calc(var(--ty) * 0.3)) scale(1) rotate(24deg); }
+  100% { opacity: 0; transform: translate(var(--tx), var(--ty)) scale(0.85) rotate(140deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tile.is-hit {
+    animation: none;
+  }
+
+  .star {
+    animation: none;
+    display: none;
+  }
 }
 
 .tile.is-offset-1 {

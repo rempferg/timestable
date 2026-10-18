@@ -1,6 +1,7 @@
 import {
   ChangeDetectionStrategy,
   Component,
+  OnDestroy,
   OnInit,
   computed,
   input,
@@ -35,11 +36,13 @@ type Phase = 'asking' | 'answered';
     '(document:click)': 'onDocumentClick($event)'
   }
 })
-export class AlphabetGameComponent implements OnInit {
+export class AlphabetGameComponent implements OnInit, OnDestroy {
   readonly childIdObfuscated = input<string | null>(null);
   readonly preview = input(false);
 
   readonly letters = BASE_LETTERS;
+  // Six stars share the hit burst; each gets its own outgoing direction in CSS.
+  readonly stars = [0, 1, 2, 3, 4, 5];
   readonly target = signal('A');
   readonly phase = signal<Phase>('asking');
   readonly clickedIndex = signal<number | null>(null);
@@ -77,6 +80,7 @@ export class AlphabetGameComponent implements OnInit {
   });
 
   private displayedAtMs = 0;
+  private audioContext: AudioContext | null = null;
 
   ngOnInit(): void {
     if (this.preview()) {
@@ -86,6 +90,11 @@ export class AlphabetGameComponent implements OnInit {
       return;
     }
     this.startRound();
+  }
+
+  ngOnDestroy(): void {
+    void this.audioContext?.close();
+    this.audioContext = null;
   }
 
   startRound(): void {
@@ -119,12 +128,16 @@ export class AlphabetGameComponent implements OnInit {
     this.startRound();
   }
 
+  isHit(index: number): boolean {
+    return this.phase() === 'answered' && index === this.correctIndex() && this.distance() === 0;
+  }
+
   tileClass(index: number): string {
     if (this.phase() !== 'answered') {
       return '';
     }
     if (index === this.correctIndex()) {
-      return 'is-correct';
+      return this.distance() === 0 ? 'is-correct is-hit' : 'is-correct';
     }
     if (index === this.clickedIndex()) {
       return `is-offset-${Math.min(this.distance() ?? 0, 3)}`;
@@ -137,7 +150,45 @@ export class AlphabetGameComponent implements OnInit {
     this.phase.set('answered');
     const offset = index - this.correctIndex();
     const timeToClickMs = Math.max(0, Math.round(nowMs() - this.displayedAtMs));
+    if (offset === 0) {
+      this.playHitSound();
+    }
     void this.storeAnswer(this.target(), offset, timeToClickMs);
+  }
+
+  // A short two-note chime, synthesized so no audio file has to be shipped.
+  // Created here because the browser only allows audio after a user gesture.
+  private playHitSound(): void {
+    try {
+      const AudioContextCtor =
+        window.AudioContext ??
+        (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+      if (!AudioContextCtor) {
+        return;
+      }
+      this.audioContext ??= new AudioContextCtor();
+      const context = this.audioContext;
+      if (context.state === 'suspended') {
+        void context.resume();
+      }
+      const start = context.currentTime;
+      const notes = [880, 1318.51];
+      notes.forEach((frequency, index) => {
+        const oscillator = context.createOscillator();
+        const gain = context.createGain();
+        oscillator.type = 'sine';
+        oscillator.frequency.value = frequency;
+        const noteStart = start + index * 0.09;
+        gain.gain.setValueAtTime(0, noteStart);
+        gain.gain.linearRampToValueAtTime(0.18, noteStart + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.0001, noteStart + 0.3);
+        oscillator.connect(gain).connect(context.destination);
+        oscillator.start(noteStart);
+        oscillator.stop(noteStart + 0.32);
+      });
+    } catch (error) {
+      console.error('Failed to play hit sound', error);
+    }
   }
 
   private async storeAnswer(

@@ -11,7 +11,13 @@
         [disabled]="preview()"
         [attr.aria-label]="'Buchstabe ' + letter"
         (click)="onTileClick(i, $event)"
-      ></button>
+      >
+        @if (isHit(i)) {
+          @for (star of stars; track $index) {
+            <span class="star" aria-hidden="true">★</span>
+          }
+        }
+      </button>
     }
   </div>
 
