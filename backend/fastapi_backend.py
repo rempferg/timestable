@@ -1116,17 +1116,6 @@ async def store_alphabet_answer(payload: AlphabetAnswerPayload):
 
 ## Contact form (e-mail)
 
-smtp_host = os.getenv("SMTP_HOST", "smtp.strato.de")
-smtp_port = int(os.getenv("SMTP_PORT", "587"))
-smtp_user = _required_env("SMTP_USER")
-smtp_pass = _required_env("SMTP_PASSWORD")
-receiver_emails = [
-    receiver.strip()
-    for receiver in os.getenv("SMTP_RECIPIENTS", smtp_user).split(",")
-    if receiver.strip()
-]
-
-
 class Message(BaseModel):
     sender_name: str
     sender_email: str
@@ -1141,6 +1130,20 @@ async def send_message(message: Message):
     content = message.content.strip()
     if not sender_name or not sender_email or not content:
         raise HTTPException(status_code=400, detail="Please fill in all fields.")
+
+    # Read the mail configuration here rather than at import time, so the API
+    # still starts when the contact form is not configured (e.g. previews).
+    smtp_user = os.getenv("SMTP_USER")
+    smtp_pass = os.getenv("SMTP_PASSWORD")
+    if not smtp_user or not smtp_pass:
+        raise HTTPException(status_code=503, detail="Contact form is not configured.")
+    smtp_host = os.getenv("SMTP_HOST", "smtp.strato.de")
+    smtp_port = int(os.getenv("SMTP_PORT") or "587")
+    receiver_emails = [
+        receiver.strip()
+        for receiver in (os.getenv("SMTP_RECIPIENTS") or smtp_user).split(",")
+        if receiver.strip()
+    ]
 
     email_message = EmailMessage()
     email_message['From'] = formataddr(('Kontaktformular 1x1', smtp_user))
