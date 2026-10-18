@@ -78,8 +78,8 @@
   position: absolute;
   left: 50%;
   top: 50%;
-  margin: -8px 0 0 -7px;
-  font-size: 14px;
+  margin: -13px 0 0 -11px;
+  font-size: 22px;
   line-height: 1;
   color: rgb(255, 200, 60);
   pointer-events: none;
@@ -87,12 +87,12 @@
   animation: star-fly 0.9s ease-out forwards;
 }
 
-.star:nth-child(1) { --tx: 26px; --ty: -6px; }
-.star:nth-child(2) { --tx: 13px; --ty: -28px; }
-.star:nth-child(3) { --tx: -13px; --ty: -28px; }
-.star:nth-child(4) { --tx: -26px; --ty: -6px; }
-.star:nth-child(5) { --tx: 13px; --ty: 16px; }
-.star:nth-child(6) { --tx: -13px; --ty: 16px; }
+.star:nth-child(1) { --tx: 46px; --ty: -12px; }
+.star:nth-child(2) { --tx: 23px; --ty: -50px; }
+.star:nth-child(3) { --tx: -23px; --ty: -50px; }
+.star:nth-child(4) { --tx: -46px; --ty: -12px; }
+.star:nth-child(5) { --tx: 23px; --ty: 30px; }
+.star:nth-child(6) { --tx: -23px; --ty: 30px; }
 
 @keyframes tile-pop {
   0% { transform: scale(1); }
