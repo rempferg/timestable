@@ -2,7 +2,24 @@ import { ChangeDetectionStrategy, Component, OnInit, computed, input, signal } f
 
 import { API_BASE_URL } from '../api.config';
 
-const LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
+const BASE_LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
+
+// The x axis: every base letter followed directly by the umlauts and the sharp
+// s that are answered through it. A column's vertical layout follows its base
+// letter, so offset 0 sits at the same height as for that letter.
+const COLUMN_LETTERS = [
+  'A', 'Ä', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N',
+  'O', 'Ö', 'P', 'Q', 'R', 'S', 'ß', 'T', 'U', 'Ü', 'V', 'W', 'X', 'Y', 'Z'
+];
+
+const BASE_LETTER_BY_TARGET: Record<string, string> = {
+  'Ä': 'A',
+  'Ö': 'O',
+  'Ü': 'U',
+  'ß': 'S'
+};
+
+const TILE_COUNT = BASE_LETTERS.length;
 const HALF_LIFE_DAYS = 1.5;
 const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -32,20 +49,18 @@ export class AlphabetProgressComponent implements OnInit {
   readonly childIdObfuscated = input<string | null>(null);
   readonly preview = input(false);
 
-  readonly letters = LETTERS;
+  readonly letters = COLUMN_LETTERS;
   readonly loadState = signal<'loading' | 'ready' | 'error'>('loading');
 
   private readonly weights = signal<Map<string, Map<number, number>>>(new Map());
 
-  // One column per asked letter, each with 26 boxes ordered by offset from the
-  // most negative at the top to the largest at the bottom. For 'A' that starts
-  // at offset 0, for 'B' at -1, and so on, so the correct box (offset 0) walks
-  // down the column with the letter.
+  // One column per answered letter, each with 26 boxes ordered by offset from
+  // the most negative at the top to the largest at the bottom. The range comes
+  // from the letter's base letter, so the correct box (offset 0) sits at the
+  // same height for 'A' and 'Ä', for 'O' and 'Ö', and so on.
   readonly columns = computed<Box[][]>(() => {
     const weights = this.weights();
-    return LETTERS.map((letter, index) =>
-      this.buildColumn(letter, index, weights.get(letter))
-    );
+    return COLUMN_LETTERS.map((letter) => this.buildColumn(letter, weights.get(letter)));
   });
 
   ngOnInit(): void {
@@ -103,10 +118,10 @@ export class AlphabetProgressComponent implements OnInit {
     return normalized;
   }
 
-  private buildColumn(letter: string, index: number, byOffset?: Map<number, number>): Box[] {
-    const minOffset = -index;
+  private buildColumn(letter: string, byOffset?: Map<number, number>): Box[] {
+    const minOffset = -baseIndex(letter);
     const boxes: Box[] = [];
-    for (let row = 0; row < LETTERS.length; row++) {
+    for (let row = 0; row < TILE_COUNT; row++) {
       const offset = minOffset + row;
       boxes.push({
         offset,
@@ -129,4 +144,9 @@ export class AlphabetProgressComponent implements OnInit {
     }
     return 'is-past';
   }
+}
+
+function baseIndex(letter: string): number {
+  const baseLetter = BASE_LETTER_BY_TARGET[letter] ?? letter;
+  return BASE_LETTERS.indexOf(baseLetter);
 }
