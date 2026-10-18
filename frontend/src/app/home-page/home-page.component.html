@@ -155,6 +155,23 @@
           <span class="module-description">Wörter lesen und schreiben</span>
         </div>
       </a>
+
+      <a
+        class="module-card"
+        [class.is-disabled]="loadState() !== 'ready'"
+        [attr.aria-disabled]="loadState() !== 'ready'"
+        [routerLink]="['/alphabet']"
+        [queryParams]="{ id: childIdObfuscated() }"
+        aria-label="Alphabet öffnen"
+      >
+        <div class="module-preview" aria-hidden="true">
+          <app-alphabet-game [preview]="true" />
+        </div>
+        <div class="module-meta">
+          <span class="module-title">Alphabet</span>
+          <span class="module-description">Buchstaben finden</span>
+        </div>
+      </a>
     </section>
 
     <footer class="home-footer">

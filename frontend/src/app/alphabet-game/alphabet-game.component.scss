@@ -1,0 +1,129 @@
+:host {
+  display: block;
+  height: 100%;
+}
+
+.game {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(24px, 6vh, 56px);
+  height: 100%;
+  box-sizing: border-box;
+}
+
+.target {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: clamp(120px, 30vw, 200px);
+  aspect-ratio: 1 / 1;
+  box-sizing: border-box;
+  font: 650 clamp(64px, 18vw, 120px) / 1 "Space Grotesk", "Avenir Next", "Segoe UI", sans-serif;
+  line-height: 1;
+  color: #1d1d1f;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(10, 10, 10, 0.08);
+  box-shadow: 0 14px 32px rgba(34, 46, 80, 0.18);
+}
+
+.letter-row {
+  display: flex;
+  gap: clamp(2px, 0.5vw, 6px);
+  width: 100%;
+}
+
+.tile {
+  flex: 1 1 0;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  aspect-ratio: 1 / 1.55;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  font: 600 clamp(11px, 1.8vw, 22px) / 1 "Space Grotesk", "Avenir Next", "Segoe UI", sans-serif;
+  color: #1d1d1f;
+  background: rgba(255, 255, 255, 0.82);
+  border: 1px solid rgba(29, 29, 31, 0.14);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.tile:not(:disabled):hover,
+.tile:not(:disabled):focus-visible {
+  border-color: rgba(29, 29, 31, 0.6);
+  background: #fff;
+}
+
+.tile:disabled {
+  cursor: default;
+}
+
+.tile.is-correct {
+  background: rgb(63, 166, 101);
+  border-color: transparent;
+  color: #fff;
+}
+
+.tile.is-offset-1 {
+  background: hsl(142 42% 72%);
+  border-color: transparent;
+  color: #16351f;
+}
+
+.tile.is-offset-2 {
+  background: rgb(255, 208, 90);
+  border-color: transparent;
+  color: #4a3a10;
+}
+
+.tile.is-offset-3 {
+  background: hsl(4 55% 55%);
+  border-color: transparent;
+  color: #fff;
+}
+
+.hint {
+  margin: 0;
+  font: 500 clamp(0.85rem, 2vw, 1.05rem) / 1.4 "Space Grotesk", "Avenir Next", "Segoe UI", sans-serif;
+  color: rgba(20, 20, 20, 0.65);
+  text-align: center;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+:host(.is-preview) .game {
+  gap: 8px;
+  padding: 6px;
+}
+
+:host(.is-preview) .target {
+  width: 42%;
+  max-width: 84px;
+  font-size: 1.9rem;
+  box-shadow: none;
+}
+
+:host(.is-preview) .letter-row {
+  gap: 2px;
+}
+
+:host(.is-preview) .tile {
+  aspect-ratio: 1 / 2;
+  border-radius: 2px;
+  font-size: 0.5rem;
+}

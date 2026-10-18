@@ -1066,6 +1066,54 @@ async def store_answer_division_remainder(child_id_obfuscated: str, question_id:
         return {"status": "success"}
 
 
+## Alphabet
+
+# The row only shows the 26 base letters; umlaut and sharp-s targets are answered
+# through their base tile (Ä→A, Ö→O, Ü→U, ß→S) but stored as shown.
+ALPHABET_TARGET_LETTERS = frozenset('ABCDEFGHIJKLMNOPQRSTUVWXYZÄÖÜß')
+ALPHABET_TILE_COUNT = 26
+
+
+class AlphabetAnswerPayload(BaseModel):
+    child_id_obfuscated: str
+    asked_letter: str
+    clicked_offset: int
+    time_to_click_ms: int
+
+
+@subapi.post('/alphabet/answer')
+async def store_alphabet_answer(payload: AlphabetAnswerPayload):
+    '''Store an alphabet answer.'''
+    if payload.asked_letter not in ALPHABET_TARGET_LETTERS:
+        raise HTTPException(status_code=400, detail='Unsupported asked letter')
+    if not -(ALPHABET_TILE_COUNT - 1) <= payload.clicked_offset <= ALPHABET_TILE_COUNT - 1:
+        raise HTTPException(status_code=400, detail='clicked_offset out of range')
+    if payload.time_to_click_ms < 0:
+        raise HTTPException(status_code=400, detail='time_to_click_ms must not be negative')
+    child_id_transparent = deobfuscate_id(payload.child_id_obfuscated)
+    try:
+        with db_cursor() as cur:
+            cur.execute(
+                '''
+                INSERT INTO answers_alphabet (
+                    child_id_transparent, asked_letter, clicked_offset, time_to_click_ms
+                )
+                VALUES (%s, %s, %s, %s)
+                ''',
+                (
+                    child_id_transparent,
+                    payload.asked_letter,
+                    payload.clicked_offset,
+                    payload.time_to_click_ms
+                )
+            )
+    except Exception as e:
+        print(cur.query)
+        print(cur.statusmessage)
+        raise HTTPException(status_code=500, detail=str(e))
+    return {"status": "success"}
+
+
 ## Contact form (e-mail)
 
 smtp_host = os.getenv("SMTP_HOST", "smtp.strato.de")

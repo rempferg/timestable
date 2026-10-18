@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, OnInit, computed, signal } from '@a
 import { ActivatedRoute, RouterModule } from '@angular/router';
 
 import { API_BASE_URL } from '../api.config';
+import { AlphabetGameComponent } from '../alphabet-game/alphabet-game.component';
 import { DivisionRemainderOverviewComponent } from '../division-remainder-overview/division-remainder-overview.component';
 import { PlusTableEquationsComponent } from '../plus-table-equations/plus-table-equations.component';
 import { PlusTableComponent } from '../plus-table/plus-table.component';
@@ -19,7 +20,8 @@ import { WordListComponent } from '../word-list/word-list.component';
     PlusTableComponent,
     PlusTableEquationsComponent,
     DivisionRemainderOverviewComponent,
-    WordListComponent
+    WordListComponent,
+    AlphabetGameComponent
   ],
   templateUrl: './home-page.component.html',
   styleUrl: './home-page.component.scss',

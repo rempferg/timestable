@@ -1,5 +1,6 @@
 import { Routes } from '@angular/router';
 
+import { AlphabetPageComponent } from './alphabet-page/alphabet-page.component';
 import { DataProtectionNoticeComponent } from './data-protection-notice/data-protection-notice.component';
 import { DivisionRemainderPageComponent } from './division-remainder-page/division-remainder-page.component';
 import { HomePageComponent } from './home-page/home-page.component';
@@ -38,6 +39,10 @@ export const routes: Routes = [
 	{
 		path: 'words',
 		component: WordsPageComponent
+	},
+	{
+		path: 'alphabet',
+		component: AlphabetPageComponent
 	},
 	{
 		path: 'impressum',

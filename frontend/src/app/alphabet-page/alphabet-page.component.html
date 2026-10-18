@@ -1,0 +1,13 @@
+<main class="page">
+  <app-learning-menubar [showVisibilityToggle]="false" />
+  <div class="page-body">
+    @if (loadState() === 'loading') {
+      <p class="status">Lädt...</p>
+    } @else if (loadState() === 'error') {
+      <p class="status">{{ errorMessage() }}</p>
+      <button type="button" class="retry-button" (click)="initChildId()">Erneut versuchen</button>
+    } @else if (childIdObfuscated()) {
+      <app-alphabet-game [childIdObfuscated]="childIdObfuscated()" />
+    }
+  </div>
+</main>

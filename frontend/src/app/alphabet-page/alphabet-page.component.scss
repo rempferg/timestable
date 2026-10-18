@@ -1,0 +1,48 @@
+:host {
+  display: block;
+  height: 100%;
+}
+
+.page {
+  height: 100vh;
+  height: 100svh;
+  box-sizing: border-box;
+  display: grid;
+  grid-template-rows: auto 1fr;
+  overflow: hidden;
+  background: radial-gradient(circle at top right, rgba(255, 208, 90, 0.35), transparent 42%),
+    linear-gradient(135deg, #f6f2ed, #eef3f0);
+  color: #1d1d1f;
+}
+
+.page-body {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  padding: clamp(20px, 4vw, 48px) clamp(20px, 4vw, 48px) clamp(28px, 6vw, 64px);
+  box-sizing: border-box;
+}
+
+.page-body app-alphabet-game {
+  flex: 1;
+  min-height: 0;
+}
+
+.status {
+  margin: 0;
+  font-size: 0.95rem;
+  color: rgba(20, 20, 20, 0.6);
+}
+
+.retry-button {
+  justify-self: start;
+  border: none;
+  background: #1d1d1f;
+  color: #f6f2ed;
+  padding: 10px 18px;
+  border-radius: 999px;
+  font-family: "Space Grotesk", "Avenir Next", "Segoe UI", sans-serif;
+  font-size: 0.95rem;
+  cursor: pointer;
+}
